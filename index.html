@@ -127,6 +127,37 @@ label.flabel{display:block;font-size:.85rem;color:var(--muted);margin-top:8px}
 .modal{background:var(--card);border:1px solid var(--gold);border-radius:18px;
   padding:22px;max-width:400px;width:100%}
 .modal h2{margin-top:0}
+/* ---------- prayer times ---------- */
+input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(--line);
+  border-radius:12px;color:var(--ink);padding:10px 12px;font-size:1rem;font-family:var(--sans)}
+.pt-banner{border-left:4px solid var(--gold);cursor:pointer}
+.pt-banner .pt-next{font-family:var(--serif);color:var(--gold-soft);font-size:1.05rem}
+.pt-banner .pt-verse{color:var(--muted);font-size:.88rem;font-style:italic;margin-top:2px}
+.pt-banner .pt-streak{color:var(--gold-soft);font-size:.85rem;margin-top:6px}
+.pt-row{display:flex;align-items:center;gap:10px;margin:10px 0;flex-wrap:wrap}
+.pt-row .pt-label{flex:1;min-width:0}
+.pt-time-item{display:flex;align-items:center;gap:10px;background:var(--bg2);
+  border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0}
+.pt-time-item .pt-watch{flex:1;min-width:0}
+.pt-time-item .pt-watch b{color:var(--gold-soft);font-family:var(--serif);font-weight:600;display:block}
+.pt-time-item .pt-watch span{color:var(--muted);font-size:.8rem}
+.switch{position:relative;width:52px;height:30px;flex:none;cursor:pointer;border:none;background:none;padding:0}
+.switch .track{position:absolute;inset:0;border-radius:999px;background:#2a4433;border:1px solid var(--line)}
+.switch .knob{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--muted)}
+.switch[aria-checked="true"] .track{background:var(--gold)}
+.switch[aria-checked="true"] .knob{left:25px;background:#1a1206}
+.daystrip{display:flex;gap:6px;margin:10px 0}
+.daychip{flex:1;text-align:center;border:1px solid var(--line);border-radius:10px;
+  padding:8px 2px;font-size:.72rem;color:var(--muted);background:var(--bg2);min-width:0}
+.daychip.today{border-color:var(--gold);color:var(--gold-soft);font-weight:700}
+.pt-alert{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 50% 30%,#16301f,#0a1811 75%);padding:24px;text-align:center}
+.pt-alert.open{display:flex}
+.pt-alert .pt-name{font-family:var(--serif);font-size:1.9rem;color:var(--gold-soft);margin:10px 0}
+.pt-alert .pt-verse{font-family:var(--serif);font-style:italic;color:var(--moon);
+  font-size:1.05rem;line-height:1.7;max-width:34ch;margin:0 auto 6px}
+.pt-alert .pt-actions{display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+.pt-note{font-size:.82rem;color:var(--muted)}
 /* ---------- admin ---------- */
 .adminrow{display:flex;gap:8px;margin-top:10px}
 .pending{border-left:3px solid #c96a4a}
@@ -209,6 +240,12 @@ label.flabel{display:block;font-size:.85rem;color:var(--muted);margin-top:8px}
   </div>
   <p class="hero-caption">"Watch and pray" — Matthew 26:41 · the garden where Jesus prayed</p>
 
+  <div class="card pt-banner tappable" id="ptBanner">
+    <div class="pt-next" id="ptBannerTitle">Loading prayer times…</div>
+    <div class="pt-verse" id="ptBannerVerse"></div>
+    <div class="pt-streak" id="ptBannerStreak"></div>
+  </div>
+
   <h1>Today's Devotion</h1>
   <div class="card dev-card tappable" id="devotionCard">
     <div class="dev-ref" id="devCardRef">Loading today's devotion…</div>
@@ -222,6 +259,7 @@ label.flabel{display:block;font-size:.85rem;color:var(--muted);margin-top:8px}
       <button class="btn btn-gold" data-goto="guided">🙏 Pray now</button>
       <button class="btn" data-goto="bible">📖 Open Bible</button>
       <button class="btn" data-goto="wall">🕯️ Prayer Wall</button>
+      <button class="btn" data-goto="times">🕰️ Prayer times</button>
     </div>
   </div>
 </section>
@@ -393,6 +431,53 @@ label.flabel{display:block;font-size:.85rem;color:var(--muted);margin-top:8px}
   <div id="adminTestimonies"><div class="loading">Loading…</div></div>
 </section>
 
+<!-- ============ PRAYER TIMES ============ -->
+<section class="view" id="view-times">
+  <button class="btn btn-ghost btn-sm" data-goto="home">← Home</button>
+  <h1>Prayer Times</h1>
+  <p class="sub">Set your daily watches. Gentle nudges, never guilt.</p>
+
+  <div class="card">
+    <div class="pt-row">
+      <div class="pt-label"><b>Reminders</b><div class="pt-note">Gentle nudges while the app is open</div></div>
+      <button class="switch" id="ptEnableBtn" role="switch" aria-checked="true" aria-label="Toggle prayer reminders"><span class="track"></span><span class="knob"></span></button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">How many times a day?</h2>
+    <div class="verbars" id="ptPresets">
+      <button class="btn btn-sm" data-n="3">3</button>
+      <button class="btn btn-sm" data-n="4">4</button>
+      <button class="btn btn-sm" data-n="5">5</button>
+      <button class="btn btn-sm" data-n="custom">Custom</button>
+    </div>
+    <div class="pt-row" id="ptCountWrap" style="display:none">
+      <label class="flabel" for="ptCountInput" style="margin:0">Times per day (1–8)</label>
+      <input type="number" id="ptCountInput" min="1" max="8" value="3" style="width:80px">
+    </div>
+    <div id="ptTimeList"></div>
+    <p class="pt-note">Tap a time to change it. Times follow your timezone.</p>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">Your rhythm</h2>
+    <div class="daystrip" id="ptWeekStrip"></div>
+    <div class="pt-note" id="ptRhythmLine"></div>
+    <div class="pt-streak" id="ptStreakLine" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">Notifications</h2>
+    <p class="pt-note" id="ptNotifStatus"></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn btn-sm" id="ptNotifBtn">Enable notifications</button>
+      <button class="btn btn-sm btn-ghost" id="ptIosHintBtn">How to enable on iPhone</button>
+    </div>
+    <p class="pt-note" id="ptIosHint" style="display:none;margin-top:8px">On iPhone: open Gethsemane in Safari → tap <b>Share</b> → <b>Add to Home Screen</b> → open it from your Home Screen and allow notifications there. Background alerts only work from the Home Screen app.</p>
+  </div>
+</section>
+
 </main>
 
 <nav class="tabbar" aria-label="Main navigation">
@@ -417,6 +502,20 @@ label.flabel{display:block;font-size:.85rem;color:var(--muted);margin-top:8px}
 </nav>
 
 <div id="toast" role="status"></div>
+
+<div class="pt-alert" id="ptAlert" role="alertdialog" aria-label="Prayer time reminder">
+  <div>
+    <div style="font-size:2.4rem">🙏</div>
+    <div class="pt-name" id="ptAlertName"></div>
+    <div class="pt-verse" id="ptAlertVerse"></div>
+    <div class="pt-note">It's time to pray</div>
+    <div class="pt-actions">
+      <button class="btn btn-gold" id="ptAlertPray">Begin prayer</button>
+      <button class="btn" id="ptAlertSnooze">Snooze 10 min</button>
+      <button class="btn btn-ghost" id="ptAlertDismiss">Dismiss</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-wrap" id="nameModal">
   <div class="modal">
@@ -798,7 +897,7 @@ function fmtDate(iso){
 }
 
 /* ================= NAVIGATION ================= */
-const VIEWS=['home','devotion','guided','bible','wall','testimony','love','auth','admin'];
+const VIEWS=['home','devotion','guided','bible','wall','testimony','love','times','auth','admin'];
 function showView(name){
   VIEWS.forEach(v=>$('view-'+v).classList.toggle('active', v===name));
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.view===name));
@@ -1201,12 +1300,13 @@ async function loadProfile(){
     profile=data||null;
   }catch(e){ profile=null; }
   $('adminBtn').style.display=(profile&&profile.is_admin)?'':'none';
+  syncPtFromProfile();
   renderAuth();
 }
 sb.auth.onAuthStateChange(async (event,s)=>{
   session=s;
   if(s){ await loadProfile(); maybePromptName(); }
-  else { profile=null; renderAuth(); }
+  else { profile=null; renderAuth(); loadPtLocal(); renderPtAll(); }
 });
 
 /* ================= ADMIN ================= */
@@ -1238,6 +1338,314 @@ async function moderate(table,id,status){
   }catch(e){ toast('Action failed — try again'); }
 }
 
+/* ================= PRAYER TIMES ================= */
+const PT_DEFAULTS=['06:00','12:00','21:00'];
+const PT_PRESETS={3:['06:00','12:00','21:00'],4:['06:00','12:00','18:00','21:00'],5:['06:00','09:00','12:00','18:00','21:00']};
+const WATCHES=[
+  {from:5,to:8,name:'Morning Watch',ref:'Mark 1:35',verse:'“Very early in the morning, while it was still dark, Jesus got up, left the house and went off to a solitary place, where he prayed.”'},
+  {from:8,to:11,name:'The Third Hour',ref:'Isaiah 50:4',verse:'“Morning by morning he wakens me and opens my understanding to his will.”'},
+  {from:11,to:14,name:'Midday Cry',ref:'Psalm 55:17',verse:'“Evening, and morning, and at noon, will I pray, and cry aloud: and he shall hear my voice.”'},
+  {from:14,to:17,name:'The Ninth Hour',ref:'Acts 3:1',verse:'“Peter and John went up together into the temple at the hour of prayer, being the ninth hour.”'},
+  {from:17,to:19,name:'Evening Sacrifice',ref:'Psalm 141:2',verse:'“Let my prayer be set forth before thee as incense; and the lifting up of my hands as the evening sacrifice.”'},
+  {from:19,to:20,name:'The Quiet Hour',ref:'Psalm 46:10',verse:'“Be still, and know that I am God.”'},
+  {from:20,to:24,name:'Night Watch',ref:'Luke 6:12',verse:'“…he went out into a mountain to pray, and continued all night in prayer to God.”'},
+  {from:0,to:5,name:'Deep Night Watch',ref:'Psalm 63:6',verse:'“When I remember thee upon my bed, and meditate on thee in the night watches.”'}
+];
+function watchFor(h){ return WATCHES.find(w=>h>=w.from&&h<w.to)||WATCHES[7]; }
+function arraysEq(a,b){ return a.length===b.length&&a.every((x,i)=>x===b[i]); }
+
+let ptTimes=PT_DEFAULTS.slice(), ptEnabled=true, ptStreak={count:0,lastDate:null};
+
+function ptTz(){
+  try{ return (profile&&profile.timezone)||Intl.DateTimeFormat().resolvedOptions().timeZone||'America/New_York'; }
+  catch(e){ return 'America/New_York'; }
+}
+function loadPtLocal(){
+  try{
+    const t=JSON.parse(localStorage.getItem('geth_pt_times')||'null');
+    if(Array.isArray(t)&&t.length&&t.every(x=>/^\d{2}:\d{2}$/.test(x))) ptTimes=t.slice().sort();
+    const e=localStorage.getItem('geth_pt_enabled');
+    if(e!==null) ptEnabled=e==='1';
+    const s=JSON.parse(localStorage.getItem('geth_pt_streak')||'null');
+    if(s&&typeof s.count==='number') ptStreak=s;
+  }catch(e){}
+}
+function savePtLocal(){
+  try{
+    localStorage.setItem('geth_pt_times',JSON.stringify(ptTimes));
+    localStorage.setItem('geth_pt_enabled',ptEnabled?'1':'0');
+    localStorage.setItem('geth_pt_streak',JSON.stringify(ptStreak));
+  }catch(e){}
+}
+async function savePt(){
+  savePtLocal();
+  if(session){
+    try{ await sb.from('profiles').update({prayer_times:ptTimes,prayer_reminders_enabled:ptEnabled,prayer_streak:ptStreak}).eq('id',session.user.id); }
+    catch(e){}
+  }
+  renderPtAll();
+}
+function syncPtFromProfile(){
+  let remoteHas=false;
+  if(profile){
+    if(Array.isArray(profile.prayer_times)&&profile.prayer_times.length){
+      ptTimes=profile.prayer_times.slice().sort(); remoteHas=true;
+    }
+    if(typeof profile.prayer_reminders_enabled==='boolean'){ ptEnabled=profile.prayer_reminders_enabled; remoteHas=true; }
+    const s=profile.prayer_streak;
+    if(s&&typeof s.count==='number'){
+      const rl=s.lastDate||'', ll=ptStreak.lastDate||'';
+      if(rl>ll||(rl===ll&&s.count>ptStreak.count)){ ptStreak=s; remoteHas=true; }
+    }
+  }
+  savePtLocal();
+  if(session&&!remoteHas){
+    sb.from('profiles').update({prayer_times:ptTimes,prayer_reminders_enabled:ptEnabled,prayer_streak:ptStreak})
+      .eq('id',session.user.id).then(()=>{},{});
+  }
+  renderPtAll();
+}
+
+/* ---- timezone-aware scheduling ---- */
+function tzWall(tz){
+  try{
+    const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:tz,hour12:false,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).formatToParts(new Date()).map(x=>[x.type,x.value]));
+    return {y:+p.year,mo:+p.month,d:+p.day,h:(+p.hour)%24,mi:+p.minute};
+  }catch(e){ const n=new Date(); return {y:n.getFullYear(),mo:n.getMonth()+1,d:n.getDate(),h:n.getHours(),mi:n.getMinutes()}; }
+}
+function tzOffsetMs(tz,date){
+  try{
+    const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:tz,hour12:false,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).formatToParts(date).map(x=>[x.type,x.value]));
+    return Date.UTC(+p.year,+p.month-1,+p.day,(+p.hour)%24,+p.minute,+p.second)-date.getTime();
+  }catch(e){ return -date.getTimezoneOffset()*60000; }
+}
+function addDays(y,mo,d,n){
+  const dt=new Date(Date.UTC(y,mo-1,d+n));
+  return {y:dt.getUTCFullYear(),mo:dt.getUTCMonth()+1,d:dt.getUTCDate()};
+}
+function instantOfWall(tz,y,mo,d,H,M){
+  let guess=Date.UTC(y,mo-1,d,H,M);
+  for(let i=0;i<3;i++) guess=Date.UTC(y,mo-1,d,H,M)-tzOffsetMs(tz,new Date(guess));
+  return guess;
+}
+function nextPrayer(){
+  const tz=ptTz(), wall=tzWall(tz), nowMs=Date.now();
+  let best=null;
+  for(let dayAdd=0;dayAdd<2;dayAdd++){
+    const dt=addDays(wall.y,wall.mo,wall.d,dayAdd);
+    for(const t of ptTimes){
+      const H=+t.slice(0,2), M=+t.slice(3,5);
+      const inst=instantOfWall(tz,dt.y,dt.mo,dt.d,H,M);
+      if(inst>nowMs-1000&&(!best||inst<best.inst)) best={inst:inst,time:t,hour:H};
+    }
+  }
+  return best;
+}
+function fmtCountdown(ms){
+  if(ms<60000) return 'less than a minute';
+  const m=Math.round(ms/60000), h=Math.floor(m/60), mm=m%60;
+  return h<=0?mm+'m':h+'h '+mm+'m';
+}
+function fmtTime(t){
+  let H=+t.slice(0,2); const M=t.slice(3,5), ap=H>=12?'PM':'AM';
+  H=H%12||12; return H+':'+M+' '+ap;
+}
+function streakText(){
+  return ptStreak.count>0?('🔥 '+ptStreak.count+' day'+(ptStreak.count===1?'':'s')+' walking with Him'):'';
+}
+
+/* ---- home banner ---- */
+function renderPtBanner(){
+  const title=$('ptBannerTitle'), verse=$('ptBannerVerse'), streak=$('ptBannerStreak');
+  if(!ptEnabled||!ptTimes.length){
+    title.textContent='⏸️ Prayer reminders are paused';
+    verse.textContent='Tap to set your prayer times';
+    streak.textContent=streakText();
+    return;
+  }
+  const n=nextPrayer();
+  if(!n){ title.textContent='Set your prayer times'; verse.textContent='Tap to begin'; streak.textContent=''; return; }
+  const w=watchFor(n.hour);
+  title.textContent='🕰️ Next: '+w.name+' in '+fmtCountdown(n.inst-Date.now());
+  verse.textContent=w.ref+' · '+fmtTime(n.time)+' — tap to pray';
+  streak.textContent=streakText();
+}
+$('ptBanner').addEventListener('click',()=>{
+  if(!ptEnabled||!ptTimes.length){ showView('times'); return; }
+  markPrayerFromReminder(); startGuided(); showView('guided');
+});
+
+/* ---- streaks (grace, never guilt) ---- */
+function markPrayerFromReminder(){
+  const w=tzWall(ptTz());
+  const today=w.y+'-'+String(w.mo).padStart(2,'0')+'-'+String(w.d).padStart(2,'0');
+  if(ptStreak.lastDate===today) return;
+  const yd=addDays(w.y,w.mo,w.d,-1);
+  const yest=yd.y+'-'+String(yd.mo).padStart(2,'0')+'-'+String(yd.d).padStart(2,'0');
+  ptStreak.count=(ptStreak.lastDate===yest)?ptStreak.count+1:1;
+  ptStreak.lastDate=today;
+  savePt();
+}
+
+/* ---- reminder alert ---- */
+let ptAlertedToday={}, ptSnoozeUntil=0, ptSnoozeFor=null, curAlertTime=null, curAlertHour=0;
+function ptChime(){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+    const ctx=ptChime.ctx=ptChime.ctx||new AC();
+    if(ctx.state==='suspended') ctx.resume();
+    [[523.25,0],[783.99,0.4]].forEach(function(pair){
+      const f=pair[0], delay=pair[1];
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='sine'; o.frequency.value=f;
+      const t0=ctx.currentTime+delay;
+      g.gain.setValueAtTime(0.0001,t0);
+      g.gain.exponentialRampToValueAtTime(0.25,t0+0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+1.4);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t0); o.stop(t0+1.5);
+    });
+  }catch(e){}
+}
+function firePtAlert(t,H){
+  curAlertTime=t; curAlertHour=H;
+  const w=watchFor(H);
+  $('ptAlertName').textContent=w.name;
+  $('ptAlertVerse').textContent=w.verse+' — '+w.ref;
+  $('ptAlert').classList.add('open');
+  ptChime();
+  if(navigator.vibrate){ try{ navigator.vibrate([200,100,200]); }catch(e){} }
+  if('Notification' in window&&Notification.permission==='granted'){
+    try{ new Notification("It's time to pray 🙏",{body:w.name+' · '+w.ref}); }catch(e){}
+  }
+}
+function hidePtAlert(){ $('ptAlert').classList.remove('open'); }
+function checkPtAlert(){
+  if(!ptEnabled||!ptTimes.length) return;
+  const nowMs=Date.now();
+  if(ptSnoozeFor){
+    if(nowMs>=ptSnoozeUntil){ const s=ptSnoozeFor; ptSnoozeFor=null; firePtAlert(s.time,s.hour); }
+    return;
+  }
+  const tz=ptTz(), wall=tzWall(tz);
+  const today=wall.y+'-'+String(wall.mo).padStart(2,'0')+'-'+String(wall.d).padStart(2,'0');
+  for(const t of ptTimes){
+    const key=today+' '+t;
+    if(ptAlertedToday[key]) continue;
+    const H=+t.slice(0,2), M=+t.slice(3,5);
+    const inst=instantOfWall(tz,wall.y,wall.mo,wall.d,H,M);
+    const since=nowMs-inst;
+    if(since>=0&&since<120000){ ptAlertedToday[key]=true; firePtAlert(t,H); break; }
+  }
+}
+$('ptAlertPray').addEventListener('click',()=>{ hidePtAlert(); markPrayerFromReminder(); startGuided(); showView('guided'); });
+$('ptAlertSnooze').addEventListener('click',()=>{
+  ptSnoozeUntil=Date.now()+10*60000;
+  ptSnoozeFor={time:curAlertTime,hour:curAlertHour};
+  hidePtAlert(); toast('Snoozed for 10 minutes');
+});
+$('ptAlertDismiss').addEventListener('click',hidePtAlert);
+
+/* ---- settings screen ---- */
+function renderTimesSettings(){
+  $('ptEnableBtn').setAttribute('aria-checked',ptEnabled?'true':'false');
+  const isCustom=!Object.keys(PT_PRESETS).some(k=>arraysEq(PT_PRESETS[k],ptTimes));
+  $('ptPresets').querySelectorAll('button').forEach(b=>{
+    const n=b.dataset.n;
+    b.classList.toggle('on',(n==='custom')?isCustom:(!isCustom&&arraysEq(PT_PRESETS[n],ptTimes)));
+  });
+  $('ptCountWrap').style.display=isCustom?'':'none';
+  if(isCustom) $('ptCountInput').value=ptTimes.length;
+  const list=$('ptTimeList'); list.innerHTML='';
+  ptTimes.forEach((t,i)=>{
+    const w=watchFor(+t.slice(0,2));
+    const row=document.createElement('div');
+    row.className='pt-time-item';
+    const info=document.createElement('div');
+    info.className='pt-watch';
+    info.innerHTML='<b>'+esc(w.name)+'</b><span>'+esc(w.ref)+'</span>';
+    const inp=document.createElement('input');
+    inp.type='time'; inp.value=t; inp.setAttribute('aria-label','Prayer time '+(i+1));
+    inp.addEventListener('change',()=>{
+      if(!inp.value) return;
+      ptTimes[i]=inp.value; ptTimes=ptTimes.slice().sort();
+      savePt();
+    });
+    row.appendChild(info); row.appendChild(inp);
+    list.appendChild(row);
+  });
+  renderPtWeek(); renderPtStreakLine(); renderPtNotif();
+}
+function suggestTime(cur){
+  const cands=['06:00','07:00','09:00','12:00','15:00','18:00','21:00','22:00'];
+  for(const c of cands) if(!cur.includes(c)) return c;
+  return '12:00';
+}
+$('ptPresets').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  const n=b.dataset.n;
+  if(n!=='custom') ptTimes=PT_PRESETS[n].slice();
+  savePt();
+}));
+$('ptCountInput').addEventListener('change',()=>{
+  const n=Math.max(1,Math.min(8,parseInt($('ptCountInput').value,10)||3));
+  const cur=ptTimes.slice().sort();
+  while(cur.length<n) cur.push(suggestTime(cur));
+  ptTimes=cur.slice(0,n).sort();
+  savePt();
+});
+$('ptEnableBtn').addEventListener('click',()=>{
+  ptEnabled=!ptEnabled; savePt();
+  toast(ptEnabled?'Prayer reminders on 🕰️':'Prayer reminders paused');
+});
+function weekdayIdxInTz(tz){
+  try{
+    const wd=new Intl.DateTimeFormat('en-US',{timeZone:tz,weekday:'short'}).format(new Date());
+    const i=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(wd);
+    return i<0?new Date().getDay():i;
+  }catch(e){ return new Date().getDay(); }
+}
+function renderPtWeek(){
+  const days=['S','M','T','W','T','F','S'];
+  const today=weekdayIdxInTz(ptTz());
+  $('ptWeekStrip').innerHTML=days.map((d,i)=>
+    '<div class="daychip'+(i===today?' today':'')+'">'+d+'</div>').join('');
+  $('ptRhythmLine').textContent=ptEnabled&&ptTimes.length?
+    "Today's rhythm: "+ptTimes.map(fmtTime).join(' · '):
+    'Reminders are paused — turn them on above to resume your rhythm.';
+}
+function renderPtStreakLine(){
+  $('ptStreakLine').textContent=ptStreak.count>0?
+    streakText()+' — missed days simply rest; grace, not guilt.':
+    '🌅 Begin a prayer from a reminder to start your rhythm.';
+}
+function renderPtNotif(){
+  const s=$('ptNotifStatus'), btn=$('ptNotifBtn');
+  if(!('Notification' in window)){ s.textContent='This browser does not support notifications.'; btn.style.display='none'; return; }
+  btn.style.display='';
+  if(Notification.permission==='granted'){
+    s.textContent='✅ Notifications allowed — you will be nudged at each prayer time.';
+    btn.textContent='Notifications on'; btn.disabled=true;
+  }else if(Notification.permission==='denied'){
+    s.textContent='🔕 Notifications are blocked for this site. Allow them in your browser settings to get nudges.';
+    btn.style.display='none';
+  }else{
+    s.textContent='Allow notifications to be nudged at each prayer time, even when the tab is in the background.';
+    btn.textContent='Enable notifications'; btn.disabled=false;
+  }
+}
+$('ptNotifBtn').addEventListener('click',async()=>{
+  try{
+    const r=await Notification.requestPermission();
+    renderPtNotif();
+    if(r==='granted') toast('Notifications enabled 🙏');
+  }catch(e){ toast('Could not enable notifications'); }
+});
+$('ptIosHintBtn').addEventListener('click',()=>{
+  const h=$('ptIosHint'); h.style.display=h.style.display==='none'?'':'none';
+});
+function renderPtAll(){ renderPtBanner(); renderTimesSettings(); }
+function ptTick(){ renderPtBanner(); checkPtAlert(); }
+
 /* ================= INIT ================= */
 (async function init(){
   renderVersionBar(); renderTestamentBar(); renderBookList(); renderPassageList(); renderPassage(); applyReaderSize(); startGuided();
@@ -1248,6 +1656,10 @@ async function moderate(table,id,status){
   }catch(e){}
   renderAuth();
   loadDevotion();
+  loadPtLocal();
+  renderPtAll();
+  ptTick();
+  setInterval(ptTick,20000);
 })();
 </script>
 </body>
