@@ -79,6 +79,9 @@ h2{font-family:var(--serif);font-size:1.3rem;color:var(--gold-soft);margin:18px 
 .verbars .btn.on{background:var(--gold);color:#1a1206;border-color:var(--gold);font-weight:700}
 #bibleText{margin-top:6px}
 #bibleText p{margin-bottom:.9em}
+.chapgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:6px;margin:10px 0}
+.chapgrid .btn{padding:9px 2px;font-size:.85rem;text-align:center}
+.chapnav{display:flex;justify-content:space-between;gap:8px;margin:4px 0 14px}
 /* ---------- lists / forms ---------- */
 .req{border-left:3px solid var(--gold)}
 .req .body{font-size:.98rem;margin-bottom:8px}
@@ -273,7 +276,7 @@ label.flabel{display:block;font-size:.85rem;color:var(--muted);margin-top:8px}
 <!-- ============ BIBLE ============ -->
 <section class="view" id="view-bible">
   <h1>Bible</h1>
-  <p class="sub">Nine passages · five public-domain versions</p>
+  <p class="sub">The full 66-book Bible · five public-domain versions</p>
   <div class="verbars" id="versionBar"></div>
   <div class="sizebar">
     <span class="lbl">Text size</span>
@@ -282,7 +285,18 @@ label.flabel{display:block;font-size:.85rem;color:var(--muted);margin-top:8px}
     <button id="bSizeUp" aria-label="Increase text size">A+</button>
     <span class="lbl" id="bSizeLabel">100%</span>
   </div>
+  <h2>Featured passages</h2>
   <div class="passage-grid" id="passageList"></div>
+  <h2>Browse the full Bible</h2>
+  <div class="verbars" id="testamentBar">
+    <button class="btn btn-sm on" data-t="ot">Old Testament</button>
+    <button class="btn btn-sm" data-t="nt">New Testament</button>
+  </div>
+  <div class="passage-grid" id="bookList"></div>
+  <div id="chapterWrap" style="display:none">
+    <div class="dev-ref" id="chapPickLabel" style="margin:8px 0 2px"></div>
+    <div class="chapgrid" id="chapterList"></div>
+  </div>
   <div class="card">
     <div class="dev-ref" id="bibleRef"></div>
     <div class="scripture reader-text" id="bibleText"></div>
@@ -852,18 +866,121 @@ $('stepNext').addEventListener('click',()=>{
 $('beginAgain').addEventListener('click',startGuided);
 
 /* ================= BIBLE ================= */
+/* Full 66-book Bible via free public APIs (no key):
+   KJV / WEB / ASV / YLT -> bolls.life  |  BBE -> bible.helloao.org (eng_bbe) */
+const BOLLS_TR={kjv:'KJV',web:'WEB',asv:'ASV',ylt:'YLT'};
+const BBE_IDS=['GEN','EXO','LEV','NUM','DEU','JOS','JDG','RUT','1SA','2SA','1KI','2KI','1CH','2CH','EZR','NEH','EST','JOB','PSA','PRO','ECC','SNG','ISA','JER','LAM','EZK','DAN','HOS','JOL','AMO','OBA','JON','MIC','NAM','HAB','ZEP','HAG','ZEC','MAL','MAT','MRK','LUK','JHN','ACT','ROM','1CO','2CO','GAL','EPH','PHP','COL','1TH','2TH','1TI','2TI','TIT','PHM','HEB','JAS','1PE','2PE','1JN','2JN','3JN','JUD','REV'];
+const BOOKS=[['Genesis',50],['Exodus',40],['Leviticus',27],['Numbers',36],['Deuteronomy',34],['Joshua',24],['Judges',21],['Ruth',4],['1 Samuel',31],['2 Samuel',24],['1 Kings',22],['2 Kings',25],['1 Chronicles',29],['2 Chronicles',36],['Ezra',10],['Nehemiah',13],['Esther',16],['Job',42],['Psalms',150],['Proverbs',31],['Ecclesiastes',12],['Song of Solomon',8],['Isaiah',66],['Jeremiah',52],['Lamentations',5],['Ezekiel',48],['Daniel',12],['Hosea',14],['Joel',3],['Amos',9],['Obadiah',1],['Jonah',4],['Micah',7],['Nahum',3],['Habakkuk',3],['Zephaniah',3],['Haggai',2],['Zechariah',14],['Malachi',4],['Matthew',28],['Mark',16],['Luke',24],['John',21],['Acts',28],['Romans',16],['1 Corinthians',16],['2 Corinthians',13],['Galatians',6],['Ephesians',6],['Philippians',4],['Colossians',4],['1 Thessalonians',5],['2 Thessalonians',3],['1 Timothy',6],['2 Timothy',4],['Titus',3],['Philemon',1],['Hebrews',13],['James',5],['1 Peter',5],['2 Peter',3],['1 John',5],['2 John',1],['3 John',1],['Jude',1],['Revelation',22]]
+  .map(function(b,i){ return {id:i+1, name:b[0], chapters:b[1], test:i<39?'ot':'nt'}; });
+let bibleMode='featured', curTest='ot', curBook=19, curChapter=23, bibleSeq=0;
+const chapterCache={};
+function stripTags(s){ return String(s==null?'':s).replace(/<S>\d+<\/S>/gi,'').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim(); }
+async function fetchChapter(tr,book,ch){
+  const key=tr+'_'+book+'_'+ch;
+  if(chapterCache[key]) return chapterCache[key];
+  let verses;
+  if(tr==='bbe'){
+    const r=await fetch('https://bible.helloao.org/api/eng_bbe/'+BBE_IDS[book-1]+'/'+ch+'.json');
+    if(!r.ok) throw new Error('bbe '+r.status);
+    const d=await r.json();
+    const blocks=(d.chapter&&d.chapter.content)||[];
+    verses=blocks.filter(function(c){return c&&c.type==='verse';}).map(function(v){
+      return {v:v.number, t:(v.content||[]).map(function(x){return typeof x==='string'?x:((x&&x.text)||'');}).join(' ').replace(/\s+/g,' ').trim()};
+    });
+  }else{
+    const r=await fetch('https://bolls.life/get-text/'+BOLLS_TR[tr]+'/'+book+'/'+ch+'/');
+    if(!r.ok) throw new Error('bolls '+r.status);
+    const d=await r.json();
+    verses=(Array.isArray(d)?d:[]).map(function(v){ return {v:v.verse, t:stripTags(v.text)}; });
+  }
+  if(!verses.length) throw new Error('empty');
+  chapterCache[key]=verses;
+  return verses;
+}
 function renderVersionBar(){
   $('versionBar').innerHTML=Object.keys(VERSIONS).map(k=>
     '<button class="btn btn-sm'+(k===curVersion?' on':'')+'" data-ver="'+k+'">'+VERSIONS[k]+'</button>').join('');
   $('versionBar').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
-    curVersion=b.dataset.ver; renderVersionBar(); renderPassage();
+    curVersion=b.dataset.ver; renderVersionBar();
+    if(bibleMode==='browse') loadChapter(curBook,curChapter); else renderPassage();
   }));
+}
+function renderTestamentBar(){
+  $('testamentBar').querySelectorAll('button').forEach(b=>{
+    b.classList.toggle('on', b.dataset.t===curTest);
+    b.onclick=function(){ curTest=b.dataset.t; renderTestamentBar(); renderBookList(); };
+  });
+}
+function renderBookList(){
+  $('bookList').innerHTML=BOOKS.filter(b=>b.test===curTest).map(b=>
+    '<button class="btn'+(bibleMode==='browse'&&b.id===curBook?' on':'')+'" data-book="'+b.id+'">'+esc(b.name)+'</button>').join('');
+  $('bookList').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    pickBook(parseInt(b.dataset.book,10));
+  }));
+}
+function pickBook(id){
+  curBook=id; curTest=id<=39?'ot':'nt';
+  renderTestamentBar(); renderBookList();
+  const bk=BOOKS[id-1];
+  $('chapPickLabel').textContent=bk.name+' — choose a chapter';
+  $('chapterWrap').style.display='';
+  const list=$('chapterList'); list.innerHTML='';
+  for(let c=1;c<=bk.chapters;c++){
+    (function(c){
+      const btn=document.createElement('button');
+      btn.className='btn btn-sm'+(bibleMode==='browse'&&curChapter===c?' on':'');
+      btn.textContent=c;
+      btn.addEventListener('click',function(){ loadChapter(id,c); });
+      list.appendChild(btn);
+    })(c);
+  }
+}
+function markChapterBtn(ch){
+  $('chapterList').querySelectorAll('button').forEach(function(b,idx){
+    b.classList.toggle('on', idx+1===ch);
+  });
+}
+function goChapter(book,ch){ pickBook(book); loadChapter(book,ch); }
+async function loadChapter(book,ch){
+  bibleMode='browse'; curBook=book; curChapter=ch;
+  const mySeq=++bibleSeq;
+  renderBookList(); markChapterBtn(ch);
+  const bk=BOOKS[book-1];
+  $('bibleRef').textContent=bk.name+' '+ch+' · '+VERSIONS[curVersion];
+  $('bibleText').innerHTML='<div class="loading">Loading chapter…</div>';
+  try{
+    const verses=await fetchChapter(curVersion,book,ch);
+    if(mySeq!==bibleSeq) return;
+    renderChapterVerses(book,ch,verses);
+  }catch(e){
+    if(mySeq!==bibleSeq) return;
+    $('bibleText').innerHTML='<div class="empty">Couldn\'t reach the Bible library — check your connection and try again.<br><button class="btn btn-sm" id="bibleRetry" style="margin-top:10px">Try again</button></div>';
+    $('bibleRetry').addEventListener('click',function(){ loadChapter(curBook,curChapter); });
+  }
+  applyReaderSize();
+}
+function renderChapterVerses(book,ch,verses){
+  const bk=BOOKS[book-1];
+  const prev=ch>1?[book,ch-1]:(book>1?[book-1,BOOKS[book-2].chapters]:null);
+  const next=ch<bk.chapters?[book,ch+1]:(book<66?[book+1,1]:null);
+  function navBtn(t,label){ return t?'<button class="btn btn-sm" data-gob="'+t[0]+'" data-goc="'+t[1]+'">'+label+'</button>':'<span></span>'; }
+  const prevLabel=prev?('← '+BOOKS[prev[0]-1].name+' '+prev[1]):'';
+  const nextLabel=next?(' '+BOOKS[next[0]-1].name+' '+next[1]+' →'):'';
+  let html='<div class="chapnav">'+navBtn(prev,prevLabel||'← Prev')+navBtn(next,nextLabel||'Next →')+'</div>';
+  html+=verses.map(function(v){ return '<p><span class="vnum">'+v.v+'</span>'+esc(v.t)+'</p>'; }).join('');
+  html+='<div class="chapnav">'+navBtn(prev,'← Prev')+navBtn(next,'Next →')+'</div>';
+  $('bibleText').innerHTML=html;
+  $('bibleText').querySelectorAll('[data-gob]').forEach(function(b){
+    b.addEventListener('click',function(){ goChapter(parseInt(b.dataset.gob,10),parseInt(b.dataset.goc,10)); });
+  });
+  applyReaderSize();
 }
 function renderPassageList(){
   $('passageList').innerHTML=PASSAGES.map(p=>
-    '<button class="btn'+(p.id===curPassage?' on':'')+'" data-pid="'+p.id+'">'+esc(p.ref)+'</button>').join('');
+    '<button class="btn'+(bibleMode==='featured'&&p.id===curPassage?' on':'')+'" data-pid="'+p.id+'">'+esc(p.ref)+'</button>').join('');
   $('passageList').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
-    curPassage=b.dataset.pid; renderPassageList(); renderPassage();
+    curPassage=b.dataset.pid; bibleMode='featured';
+    renderPassageList(); renderBookList(); renderPassage();
   }));
 }
 function renderPassageText(text){
@@ -874,6 +991,7 @@ function renderPassageText(text){
   }).join('');
 }
 function renderPassage(){
+  bibleMode='featured';
   const p=PASSAGES.find(x=>x.id===curPassage);
   $('bibleRef').textContent=p.ref+' · '+VERSIONS[curVersion];
   $('bibleText').innerHTML=renderPassageText(p.v[curVersion]);
@@ -1122,7 +1240,7 @@ async function moderate(table,id,status){
 
 /* ================= INIT ================= */
 (async function init(){
-  renderVersionBar(); renderPassageList(); renderPassage(); applyReaderSize(); startGuided();
+  renderVersionBar(); renderTestamentBar(); renderBookList(); renderPassageList(); renderPassage(); applyReaderSize(); startGuided();
   try{
     const {data}=await sb.auth.getSession();
     session=data.session||null;
