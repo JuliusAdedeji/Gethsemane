@@ -922,12 +922,199 @@ let session = null, profile = null;
 let curPassage = 'ps23', curVersion = 'kjv', readerSize = 1;
 let stepIdx = 0, needsCache = [], curCat = 'all';
 
-const FALLBACK_DEVOTION = {
-  verse_ref: 'Matthew 26:41 (KJV)',
-  verse_text: 'Watch and pray, that ye enter not into temptation: the spirit indeed is willing, but the flesh is weak.',
-  reflection: 'In the garden of Gethsemane, Jesus asked His closest friends for one simple thing: stay awake and pray with Me. They fell asleep — not from rebellion, but from weariness. When weariness comes to you today, let this be your gentle nudge to stay awake with Him a little while. Two minutes. One verse. One prayer.',
-  prayer_focus: 'Lord, keep me watchful in prayer today — even when I am weary.'
-};
+/* ============ 30-DAY DEVOTION ROTATION (embedded fallback) ============
+   DB-first: a Supabase `devotions` row for today's date always wins.
+   When none exists, the rotation below supplies the devotion:
+   index = (dayOfYear - 1) % 30, so it changes every day. */
+const DEVOTION_ROTATION = [
+{
+verse_ref: "Philippians 4:6 (KJV)",
+verse_text: "Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let your requests be made known unto God.",
+reflection: "Worry is only prayer that has not found its voice yet. Paul does not tell us to stop feeling; he tells us where to take the feeling. Everything. By prayer. With thanksgiving. Today, instead of rehearsing what could go wrong, hand each worry to God by name and watch what He does with it.",
+prayer_focus: "Lord, I bring You every worry on my heart today, and I will not carry what You have offered to hold."
+},
+{
+verse_ref: "Psalm 100:4 (KJV)",
+verse_text: "Enter into his gates with thanksgiving, and into his courts with praise: be thankful unto him, and bless his name.",
+reflection: "Gratitude is the doorway, not the decoration. Before we ask for anything, we enter with thanks, because a thankful heart sees God clearly. Try it today: name five gifts before you name one need, and feel the whole room change.",
+prayer_focus: "Father, before I ask for anything, I enter Your presence with a grateful heart. Thank You."
+},
+{
+verse_ref: "Psalm 37:5 (KJV)",
+verse_text: "Commit thy way unto the LORD; trust also in him; and he shall bring it to pass.",
+reflection: "Committing your way to God is not the same as understanding your way. Some roads only make sense in the rearview mirror. Your part is the trust; His part is the bringing to pass. Rest the outcome in hands far bigger than yours.",
+prayer_focus: "Lord, I commit my way to You today. I trust You with the outcome even when I cannot see the road."
+},
+{
+verse_ref: "Galatians 6:9 (KJV)",
+verse_text: "And let us not be weary in well doing: for in due season we shall reap, if we faint not.",
+reflection: "Harvest keeps a schedule, and it is not yours. The farmer does not dig up the seed every morning to check on it; he waters, he waits, he trusts. Do not faint in the middle of the field. Due season is coming.",
+prayer_focus: "God, keep me from growing weary in doing good. I will keep sowing, trusting the harvest to You."
+},
+{
+verse_ref: "Ephesians 4:32 (KJV)",
+verse_text: "And be ye kind one to another, tenderhearted, forgiving one another, even as God for Christ's sake hath forgiven you.",
+reflection: "Forgiveness never says what happened was small; it says it will no longer be your prison. God forgave you at the cost of Christ, and forgiving others is how that mercy keeps flowing through you. Someone needs your release today. So do you.",
+prayer_focus: "Lord, as You have forgiven me in Christ, help me forgive those who hurt me, tenderly and truly, today."
+},
+{
+verse_ref: "1 John 4:19 (KJV)",
+verse_text: "We love him, because he first loved us.",
+reflection: "We did not start this love story; He did. Every bit of love you have ever given began as love you first received. When loving people feels hard today, go back to the source. You are loved first, loved fully, loved still.",
+prayer_focus: "Father, because You first loved me, fill me with Your love so I can pour it out on others today."
+},
+{
+verse_ref: "Philippians 4:7 (KJV)",
+verse_text: "And the peace of God, which passeth all understanding, shall keep your hearts and minds through Christ Jesus.",
+reflection: "God's peace does not always calm the storm; sometimes it steadies the sailor. It passes understanding, which means you cannot think your way into it, you can only receive it. Let it stand guard over your heart and mind today.",
+prayer_focus: "Lord, let Your peace, the kind I cannot explain, guard my heart and mind today."
+},
+{
+verse_ref: "2 Timothy 1:7 (KJV)",
+verse_text: "For God hath not given us the spirit of fear; but of power, and of love, and of a sound mind.",
+reflection: "Fear is loud, but it is not from God. What He put in you instead: power for the battle, love for the people, and a sound mind for the decisions. When fear knocks today, answer the door with what God actually gave you.",
+prayer_focus: "God, I refuse the spirit of fear. Fill me with Your power, Your love, and a sound mind today."
+},
+{
+verse_ref: "Micah 6:8 (KJV)",
+verse_text: "He hath shewed thee, O man, what is good; and what doth the LORD require of thee, but to do justly, and to love mercy, and to walk humbly with thy God?",
+reflection: "God's requirements fit in one sentence: do justly, love mercy, walk humbly. Not perform impressively, not argue convincingly, just walk humbly. The quiet, steady, just life is the one that pleases Him most.",
+prayer_focus: "Lord, teach me to do justly, to love mercy, and to walk humbly with You, not for show but from the heart."
+},
+{
+verse_ref: "Jeremiah 29:11 (KJV)",
+verse_text: "For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end.",
+reflection: "These words were spoken to exiles, people whose plans had collapsed. God's thoughts toward you have not changed with your circumstances: peace and not evil, a future and not a dead end. What looks like the end of the story is often just a hard chapter.",
+prayer_focus: "Father, I trust Your thoughts toward me, plans of peace and a future, even when my eyes cannot see them yet."
+},
+{
+verse_ref: "Psalm 27:1 (KJV)",
+verse_text: "The LORD is my light and my salvation; whom shall I fear? the LORD is the strength of my life; of whom shall I be afraid?",
+reflection: "David names his fears and then he names his God, and God is bigger every single time. Light, salvation, strength: with that lineup, fear has to sit down. Say it out loud today and mean it: whom shall I fear?",
+prayer_focus: "Lord, You are my light, my salvation, my strength. Today I will not be afraid."
+},
+{
+verse_ref: "John 8:12 (KJV)",
+verse_text: "Then spake Jesus again unto them, saying, I am the light of the world: he that followeth me shall not walk in darkness, but shall have the light of life.",
+reflection: "Darkness never wins by being strong; it only wins when the light stays off. Jesus did not say He was a lamp; He said He is the light of the world. Follow Him closely today and you will not walk in darkness.",
+prayer_focus: "Jesus, Light of the world, lead me. I will follow You and I will not walk in darkness today."
+},
+{
+verse_ref: "Matthew 11:28 (KJV)",
+verse_text: "Come unto me, all ye that labour and are heavy laden, and I will give you rest.",
+reflection: "This invitation has no fine print: all who labour, all who are heavy laden. You do not have to fix yourself before you come; the coming itself is what brings the rest. Lay it down today. He is gentle with the weary.",
+prayer_focus: "Lord Jesus, I come to You weary and heavy laden. Give me Your rest today."
+},
+{
+verse_ref: "Romans 8:28 (KJV)",
+verse_text: "And we know that all things work together for good to them that love God, to them who are the called according to his purpose.",
+reflection: "All things, not some things, not only the easy things. The detours, the delays, the disappointments: God weaves even these into good for those who love Him. You may not see the pattern yet, but the Weaver does.",
+prayer_focus: "Father, I believe You are working all things together for my good. Help me trust Your hands in every circumstance."
+},
+{
+verse_ref: "1 Peter 5:7 (KJV)",
+verse_text: "Casting all your care upon him; for he careth for you.",
+reflection: "Notice the direction: cast your care ON Him, not near Him, not beside Him. And the reason is tender: for He careth for you. Your worries are never a bother to God; they are an invitation. Throw them far today.",
+prayer_focus: "Lord, I cast all my cares upon You right now, because I know You truly care for me."
+},
+{
+verse_ref: "Nahum 1:7 (KJV)",
+verse_text: "The LORD is good, a strong hold in the day of trouble; and he knoweth them that trust in him.",
+reflection: "On the day of trouble you do not need a lecture; you need a stronghold. God is good, and His goodness has walls: a fortress for the frightened, and a Father who knows by name everyone who trusts Him.",
+prayer_focus: "God, be my stronghold in trouble today. I run to You, and I know that You know me."
+},
+{
+verse_ref: "Isaiah 41:10 (KJV)",
+verse_text: "Fear thou not; for I am with thee: be not dismayed; for I am thy God: I will strengthen thee; yea, I will help thee; yea, I will uphold thee with the right hand of my righteousness.",
+reflection: "Count the promises in this one verse: I am with you, I am your God, I will strengthen you, I will help you, I will uphold you. When the ground shakes, stand on the I-wills of God. They do not shake.",
+prayer_focus: "Lord, when I am afraid I will remember: You are with me, You will strengthen me, and You will uphold me."
+},
+{
+verse_ref: "Psalm 119:105 (KJV)",
+verse_text: "Thy word is a lamp unto my feet, and a light unto my path.",
+reflection: "A lamp does not show the whole road, only the next step. That is how God's Word guides: not a floodlight for the year, but light for the foot in front of you. Take today's step in His light; tomorrow's will be lit when you arrive.",
+prayer_focus: "Father, let Your Word light my path today. One step at a time, I will follow where You lead."
+},
+{
+verse_ref: "James 4:8 (KJV)",
+verse_text: "Draw nigh to God, and he will draw nigh to you. Cleanse your hands, ye sinners; and purify your hearts, ye double minded.",
+reflection: "This is a promise with a direction: you move, He moves. God is not playing hard to get; the distance you feel is never on His side. Draw near today, even a little, and watch Him draw near to you.",
+prayer_focus: "Lord, I draw near to You today. Come close, cleanse my heart, and make Your presence real to me."
+},
+{
+verse_ref: "Psalm 16:11 (KJV)",
+verse_text: "Thou wilt shew me the path of life: in thy presence is fulness of joy; at thy right hand there are pleasures for evermore.",
+reflection: "Joy is not the absence of trouble; it is the presence of God. In His presence there is fullness of joy, and at His right hand pleasures forever. If your joy feels thin today, the answer is not trying harder; it is drawing nearer.",
+prayer_focus: "Father, show me the path of life. Fill me with the fullness of joy that only Your presence gives."
+},
+{
+verse_ref: "Psalm 103:8 (KJV)",
+verse_text: "The LORD is merciful and gracious, slow to anger, and plenteous in mercy.",
+reflection: "Slow to anger and plenteous in mercy: that is God's default setting toward you. Not barely tolerant, not reluctantly patient, but plenteous. Whatever yesterday held, His mercy this morning is fresh and overflowing.",
+prayer_focus: "Lord, thank You for being merciful and gracious to me, slow to anger and rich in mercy, today and always."
+},
+{
+verse_ref: "2 Thessalonians 3:3 (KJV)",
+verse_text: "But the Lord is faithful, who shall stablish you, and keep you from evil.",
+reflection: "People break promises; God establishes. When everything around you feels uncertain, anchor to the one thing that never shifts: the Lord is faithful. He will steady your heart and shield you from evil.",
+prayer_focus: "Faithful Lord, establish my heart and keep me from evil. I rest on Your unchanging faithfulness."
+},
+{
+verse_ref: "Jeremiah 30:17 (KJV)",
+verse_text: "For I will restore health unto thee, and I will heal thee of thy wounds, saith the LORD; because they called thee an Outcast, saying, This is Zion, whom no man seeketh after.",
+reflection: "God does not only forgive the wound; He restores the health. I will heal thee of thy wounds, saith the LORD, spoken by the Great Physician Himself. Bring Him the broken places today; He specializes in restoration.",
+prayer_focus: "Lord, my Healer, restore health to me and heal my wounds. I trust Your restoring touch today."
+},
+{
+verse_ref: "Psalm 27:14 (KJV)",
+verse_text: "Wait on the LORD: be of good courage, and he shall strengthen thine heart: wait, I say, on the LORD.",
+reflection: "Waiting on God is not passive; it is courageous. It takes strength of heart to wait when everything in you wants to run ahead. But the wait is never wasted: He strengthens the heart that waits on Him. Wait, I say, on the LORD.",
+prayer_focus: "Lord, teach me to wait on You with courage. Strengthen my heart as I trust Your timing."
+},
+{
+verse_ref: "1 Samuel 15:22 (KJV)",
+verse_text: "And Samuel said, Hath the LORD as great delight in burnt offerings and sacrifices, as in obeying the voice of the LORD? Behold, to obey is better than sacrifice, and to hearken than the fat of rams.",
+reflection: "God prefers a listening heart over a lavish offering. You can sing the loudest and give the most, but what moves Him is simple obedience: hearing His voice and doing it. Keep it simple today. Hear, then obey.",
+prayer_focus: "Father, give me ears to hear Your voice and a heart quick to obey, better than any sacrifice I could bring."
+},
+{
+verse_ref: "Acts 20:35 (KJV)",
+verse_text: "I have shewed you all things, how that so labouring ye ought to support the weak, and to remember the words of the Lord Jesus, how he said, It is more blessed to give than to receive.",
+reflection: "The math of the Kingdom runs backward: giving enriches, and holding tight impoverishes. Jesus Himself said it is more blessed to give than to receive. Look for one person to bless today; generosity is worship with your hands.",
+prayer_focus: "Lord Jesus, make me a giver like You. Show me who to bless today, for it is more blessed to give than to receive."
+},
+{
+verse_ref: "Philippians 4:11 (KJV)",
+verse_text: "Not that I speak in respect of want: for I have learned, in whatsoever state I am, therewith to be content.",
+reflection: "Contentment is learned, not found; Paul says so himself. It is not having everything; it is needing nothing beyond what God has given today. Whatever state you are in right now can be enough, because He is enough.",
+prayer_focus: "Father, teach me the secret of contentment. In whatever state I am, let me rest in knowing You are enough."
+},
+{
+verse_ref: "2 Corinthians 12:9 (KJV)",
+verse_text: "And he said unto me, My grace is sufficient for thee: for my strength is made perfect in weakness. Most gladly therefore will I rather glory in my infirmities, that the power of Christ may rest upon me.",
+reflection: "God did not remove Paul's thorn; He revealed His grace was bigger than it. Your weakness is not the end of the story; it is where His strength shows up best. Stop apologizing for being weak and start resting in being held.",
+prayer_focus: "Lord, let Your grace be sufficient for me today. Make Your strength perfect in my weakness."
+},
+{
+verse_ref: "Isaiah 43:19 (KJV)",
+verse_text: "Behold, I will do a new thing; now it shall spring forth; shall ye not know it? I will even make a way in the wilderness, and rivers in the desert.",
+reflection: "God specializes in making ways where there are none: rivers in deserts, roads in wildernesses. The new thing is already springing forth; the only question is whether you will perceive it. Look up. He is doing something new.",
+prayer_focus: "Father, do Your new thing in my life. Open my eyes to see it, and make a way for me where there seems to be none."
+},
+{
+verse_ref: "Psalm 95:6 (KJV)",
+verse_text: "O come, let us worship and bow down: let us kneel before the LORD our maker.",
+reflection: "Worship is a posture before it is a song: bow down, kneel, come. We worship because He is our Maker; we belong to Him twice over, by creation and by redemption. Begin today on your knees, in awe.",
+prayer_focus: "Lord my Maker, I bow before You in worship. You are my God, and I am Yours."
+}
+];
+/* Pick today's rotation entry: index = (dayOfYear - 1) % 30 */
+function rotationDevotion(){
+  var now=new Date();
+  var start=new Date(now.getFullYear(),0,0);
+  var dayOfYear=Math.floor((now-start)/864e5);
+  return Object.assign({isFallback:true}, DEVOTION_ROTATION[(dayOfYear-1)%DEVOTION_ROTATION.length]);
+}
 
 const PRAYER_STEPS = [
   {t:'Stillness', d:'Close your eyes. Breathe slowly. You are in the garden with Jesus. Let the noise of the day fall quiet. He is near.'},
@@ -988,8 +1175,8 @@ async function loadDevotion(){
   try{
     const {data,error}=await sb.from('devotions').select('*').eq('devotion_date',todayStr()).maybeSingle();
     if(error) throw error;
-    devotion=data||Object.assign({isFallback:true},FALLBACK_DEVOTION);
-  }catch(e){ devotion=Object.assign({isFallback:true},FALLBACK_DEVOTION); }
+    devotion=data||rotationDevotion();
+  }catch(e){ devotion=rotationDevotion(); }
   $('devCardRef').textContent=devotion.verse_ref;
   $('devCardFocus').textContent=devotion.prayer_focus;
   $('devVerseRef').textContent=devotion.verse_ref;
