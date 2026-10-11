@@ -105,7 +105,7 @@ h2{font-family:var(--serif);font-size:1.3rem;color:var(--gold-soft);margin:18px 
   color:var(--muted);font-size:.82rem;flex-wrap:wrap}
 .praybtn{display:inline-flex;align-items:center;gap:6px;margin-top:10px}
 .count{font-weight:700;color:var(--gold-soft)}
-textarea,input[type=text],input[type=email],input[type=date]{width:100%;background:var(--bg2);
+textarea,input[type=text],input[type=email],input[type=date],select{width:100%;background:var(--bg2);
   border:1px solid var(--line);border-radius:12px;color:var(--ink);
   padding:12px;font-size:1rem;font-family:var(--sans);margin:6px 0}
 textarea{min-height:96px;resize:vertical}
@@ -128,7 +128,7 @@ label.flabel{display:block;font-size:.85rem;color:var(--muted);margin-top:8px}
 .tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:560px;
   display:flex;background:rgba(10,24,17,.96);backdrop-filter:blur(10px);
   border-top:1px solid var(--line);z-index:20;padding:6px 4px calc(8px + env(safe-area-inset-bottom))}
-.tab{flex:1;background:none;border:none;color:var(--muted);font-size:.68rem;display:flex;
+.tab{flex:1;min-width:0;background:none;border:none;color:var(--muted);font-size:.68rem;display:flex;
   flex-direction:column;align-items:center;gap:3px;padding:6px 2px;cursor:pointer;font-family:var(--sans)}
 .tab svg{width:22px;height:22px}
 .tab.active{color:var(--gold-soft)}
@@ -434,6 +434,24 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
     </div>
     <h2>Scheduled devotions</h2>
     <div id="dvList"><div class="loading">Loading…</div></div>
+
+    <h2>Publish audio</h2>
+    <div class="card">
+      <label class="flabel" for="mdTitle">Title</label>
+      <input type="text" id="mdTitle" maxlength="120" placeholder="e.g. A word for your Monday">
+      <label class="flabel" for="mdKind">Kind</label>
+      <select id="mdKind">
+        <option value="voice">🎙️ Voice message</option>
+        <option value="song">🎵 Song</option>
+      </select>
+      <label class="flabel" for="mdFile">Audio file</label>
+      <input type="file" id="mdFile" accept="audio/*">
+      <div class="form-err" id="mdErr" role="alert"></div>
+      <div class="adminrow"><button class="btn btn-gold" id="mdUploadBtn">Upload</button></div>
+      <div class="pt-note" id="mdProgress" style="display:none"></div>
+    </div>
+    <h2>Published audio</h2>
+    <div id="mdList"><div class="loading">Loading…</div></div>
   </div>
 </section>
 
@@ -484,6 +502,14 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
   </div>
 </section>
 
+<!-- ============ LISTEN (audio channel) ============ -->
+<section class="view" id="view-listen">
+  <button class="btn btn-ghost btn-sm" data-goto="home">← Home</button>
+  <h1>Listen</h1>
+  <p class="sub">The voice of the garden. Press play and rest.</p>
+  <div id="listenList"><div class="loading">Loading…</div></div>
+</section>
+
 </main>
 
 <nav class="tabbar" aria-label="Main navigation">
@@ -505,6 +531,9 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
   <button class="tab" data-view="love">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-7-4.5-9.5-9C1 8.5 3 5 6.5 5c2 0 3.5 1 4.2 2.3h2.6C14 6 15.5 5 17.5 5 21 5 23 8.5 21.5 12c-2.5 4.5-9.5 9-9.5 9z"/><path d="M12 8v6M9 11h6"/></svg>
     Love</button>
+  <button class="tab" data-view="listen">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10v4h3l4 4V6l-4 4H4z"/><path d="M15.5 9.5a4 4 0 010 5"/><path d="M18 7a8 8 0 010 10"/></svg>
+    Listen</button>
 </nav>
 
 <div id="toast" role="status"></div>
@@ -1163,14 +1192,16 @@ function fmtDate(iso){
 }
 
 /* ================= NAVIGATION ================= */
-const VIEWS=['home','devotion','guided','bible','wall','testimony','love','times','auth','admin'];
+const VIEWS=['home','devotion','guided','bible','wall','testimony','love','listen','times','auth','admin'];
 function showView(name){
+  if(name!=='listen'&&typeof stopListen==='function') stopListen();
   VIEWS.forEach(v=>$('view-'+v).classList.toggle('active', v===name));
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.view===name));
   window.scrollTo(0,0);
   if(name==='wall') loadWall();
   if(name==='testimony') loadTestimonies();
   if(name==='love') loadNeeds();
+  if(name==='listen') loadListen();
   if(name==='admin') loadAdmin();
 }
 document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>showView(t.dataset.view)));
@@ -1595,6 +1626,7 @@ async function loadAdmin(){
     document.querySelectorAll('[data-ap]').forEach(b=>b.addEventListener('click',()=>moderate(b.dataset.ap,b.dataset.id,'approved')));
     document.querySelectorAll('[data-hd]').forEach(b=>b.addEventListener('click',()=>moderate(b.dataset.hd,b.dataset.id,'hidden')));
     loadComposer();
+    loadMediaAdmin();
   }catch(e){ toast('Could not load review queue'); }
 }
 async function moderate(table,id,status){
@@ -1662,6 +1694,147 @@ async function dvDelete(date){
   }catch(e){ toast('Could not delete — please try again'); }
 }
 $('dvSaveBtn').addEventListener('click',dvSave);
+
+/* ================= LISTEN (audio channel) ================= */
+const listenAudio = new Audio();
+listenAudio.preload = 'metadata';
+let listenPlayingId = null;
+
+function fmtDur(sec){
+  if(sec==null||isNaN(sec)) return '';
+  sec=Math.round(sec);
+  return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
+}
+function mediaUrl(path){
+  return sb.storage.from('media').getPublicUrl(path).data.publicUrl;
+}
+function stopListen(){
+  try{ listenAudio.pause(); listenAudio.removeAttribute('src'); }catch(_){}
+  listenPlayingId=null;
+  document.querySelectorAll('[data-play]').forEach(b=>{ b.textContent='▶'; b.setAttribute('aria-label','Play broadcast'); });
+}
+function toggleListen(btn){
+  const id=btn.getAttribute('data-play');
+  if(listenPlayingId===id){ stopListen(); return; }
+  stopListen();
+  listenPlayingId=id;
+  listenAudio.src=btn.getAttribute('data-src');
+  listenAudio.play().catch(()=>{ stopListen(); toast('Could not play this broadcast'); });
+  btn.textContent='⏸';
+  btn.setAttribute('aria-label','Pause broadcast');
+}
+listenAudio.addEventListener('ended',stopListen);
+async function loadListen(){
+  const box=$('listenList');
+  box.innerHTML='<div class="loading">Loading…</div>';
+  stopListen();
+  try{
+    const {data,error}=await sb.from('media_items')
+      .select('id,title,kind,storage_path,duration_seconds,published_at')
+      .order('published_at',{ascending:false});
+    if(error) throw error;
+    if(!data||!data.length){ box.innerHTML='<div class="empty">No broadcasts yet — the garden is quiet. 🕯️</div>'; return; }
+    box.innerHTML=data.map(m=>{
+      const dur=fmtDur(m.duration_seconds);
+      const kindLbl=m.kind==='song'?'🎵 Song':'🎙️ Voice';
+      return '<div class="card"><div class="adminrow" style="align-items:center">'+
+        '<button class="btn btn-sm btn-gold" data-play="'+m.id+'" data-src="'+esc(mediaUrl(m.storage_path))+'" aria-label="Play '+esc(m.title)+'">▶</button>'+
+        '<div style="flex:1;min-width:0"><div class="body" style="font-weight:600">'+esc(m.title)+'</div>'+
+        '<div class="meta"><span>'+kindLbl+'</span>'+(dur?'<span> · '+dur+'</span>':'')+'<span> · '+fmtDate(m.published_at)+'</span></div></div>'+
+        '</div></div>';
+    }).join('');
+    box.querySelectorAll('[data-play]').forEach(b=>b.addEventListener('click',()=>toggleListen(b)));
+  }catch(e){
+    // table missing (setup SQL not run yet) — stay quiet, stay warm
+    box.innerHTML='<div class="empty">No broadcasts yet — the garden is quiet. 🕯️</div>';
+  }
+}
+
+/* ================= MEDIA CHANNEL (admin publishing) ================= */
+function mdError(msg){
+  const e=$('mdErr'); e.textContent=msg||''; e.style.display=msg?'':'none';
+}
+function mdSetupNeeded(e){
+  const m=String((e&&e.message)||e||'').toLowerCase();
+  return /relation|does not exist|bucket|media_items/.test(m);
+}
+async function loadMediaAdmin(){
+  if(!(profile&&profile.is_admin)) return;
+  const box=$('mdList');
+  box.innerHTML='<div class="loading">Loading…</div>';
+  try{
+    const {data,error}=await sb.from('media_items')
+      .select('id,title,kind,storage_path,published_at')
+      .order('published_at',{ascending:false});
+    if(error) throw error;
+    box.innerHTML=(data&&data.length)?data.map(m=>
+      '<div class="card"><div class="body"><b>'+esc(m.title)+'</b></div>'+
+      '<div class="meta"><span>'+(m.kind==='song'?'🎵 Song':'🎙️ Voice')+'</span><span> · '+fmtDate(m.published_at)+'</span></div>'+
+      '<div class="adminrow"><button class="btn btn-sm" data-mddel="'+m.id+'" data-path="'+esc(m.storage_path)+'">Delete</button></div></div>').join('')
+      :'<div class="empty">Nothing published yet.</div>';
+    box.querySelectorAll('[data-mddel]').forEach(b=>b.addEventListener('click',()=>mdDelete(b.dataset.mddel,b.dataset.path)));
+  }catch(e){
+    box.innerHTML= mdSetupNeeded(e)
+      ? '<div class="empty">The channel isn\u2019t set up yet — run <b>media-channel-setup.sql</b> once in the Supabase SQL editor, then come back.</div>'
+      : '<div class="empty">Could not load published audio.</div>';
+  }
+}
+function mdReadDuration(file){
+  return new Promise(resolve=>{
+    try{
+      const url=URL.createObjectURL(file);
+      const a=new Audio();
+      const done=v=>{ try{URL.revokeObjectURL(url);}catch(_){} resolve(v); };
+      const timer=setTimeout(()=>done(null),8000);
+      a.preload='metadata';
+      a.onloadedmetadata=()=>{ clearTimeout(timer); done(isFinite(a.duration)?Math.round(a.duration):null); };
+      a.onerror=()=>{ clearTimeout(timer); done(null); };
+      a.src=url;
+    }catch(_){ resolve(null); }
+  });
+}
+async function mdUpload(){
+  const title=$('mdTitle').value.trim(), kind=$('mdKind').value, file=$('mdFile').files[0];
+  if(!title){ mdError('Please give the broadcast a title.'); return; }
+  if(!file){ mdError('Please choose an audio file.'); return; }
+  mdError('');
+  const btn=$('mdUploadBtn'), prog=$('mdProgress');
+  btn.disabled=true; prog.style.display=''; prog.textContent='Preparing…';
+  try{
+    const safe=String(file.name).replace(/[^\w.\-]/g,'_');
+    const path=Date.now()+'_'+safe;
+    prog.textContent='Reading length…';
+    const dur=await mdReadDuration(file);
+    prog.textContent='Uploading…';
+    const {error:upErr}=await sb.storage.from('media').upload(path,file,{contentType:file.type||'audio/mpeg'});
+    if(upErr) throw upErr;
+    prog.textContent='Publishing…';
+    const {error:insErr}=await sb.from('media_items').insert({title:title,kind:kind,storage_path:path,duration_seconds:dur});
+    if(insErr){
+      try{ await sb.storage.from('media').remove([path]); }catch(_){}
+      throw insErr;
+    }
+    toast('Broadcast published 🎙️');
+    $('mdTitle').value=''; $('mdFile').value='';
+    await loadMediaAdmin();
+  }catch(e){
+    mdError(mdSetupNeeded(e)
+      ? 'The channel isn\u2019t set up yet — run media-channel-setup.sql once in the Supabase SQL editor, then try again.'
+      : 'Upload failed — please check your connection and try again.');
+  }
+  prog.style.display='none'; btn.disabled=false;
+}
+async function mdDelete(id,path){
+  if(!confirm('Delete this broadcast?')) return;
+  try{
+    const {error}=await sb.from('media_items').delete().eq('id',id);
+    if(error) throw error;
+    try{ await sb.storage.from('media').remove([path]); }catch(_){}
+    toast('Broadcast deleted');
+    await loadMediaAdmin();
+  }catch(e){ toast('Could not delete — please try again'); }
+}
+$('mdUploadBtn').addEventListener('click',mdUpload);
 
 /* ================= PRAYER TIMES ================= */
 const PT_DEFAULTS=['06:00','12:00','21:00'];
