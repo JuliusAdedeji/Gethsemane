@@ -105,12 +105,13 @@ h2{font-family:var(--serif);font-size:1.3rem;color:var(--gold-soft);margin:18px 
   color:var(--muted);font-size:.82rem;flex-wrap:wrap}
 .praybtn{display:inline-flex;align-items:center;gap:6px;margin-top:10px}
 .count{font-weight:700;color:var(--gold-soft)}
-textarea,input[type=text],input[type=email]{width:100%;background:var(--bg2);
+textarea,input[type=text],input[type=email],input[type=date]{width:100%;background:var(--bg2);
   border:1px solid var(--line);border-radius:12px;color:var(--ink);
   padding:12px;font-size:1rem;font-family:var(--sans);margin:6px 0}
 textarea{min-height:96px;resize:vertical}
 label.flabel{display:block;font-size:.85rem;color:var(--muted);margin-top:8px}
 .form-note{font-size:.82rem;color:var(--muted);margin-top:6px}
+.form-err{display:none;color:#f09292;font-size:.88rem;margin:8px 0}
 .empty{text-align:center;color:var(--muted);padding:26px 12px;font-style:italic}
 .loading{text-align:center;color:var(--muted);padding:20px}
 /* ---------- city of love ---------- */
@@ -414,6 +415,26 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
   <div id="adminPrayers"><div class="loading">Loading…</div></div>
   <h2>Testimonies awaiting review</h2>
   <div id="adminTestimonies"><div class="loading">Loading…</div></div>
+
+  <div id="publishSection">
+    <h2>Publish a devotion</h2>
+    <div class="card">
+      <label class="flabel" for="dvDate">Date</label>
+      <input type="date" id="dvDate">
+      <label class="flabel" for="dvRef">Verse reference</label>
+      <input type="text" id="dvRef" maxlength="80" placeholder="e.g. Psalm 23:1">
+      <label class="flabel" for="dvText">Verse text</label>
+      <textarea id="dvText" maxlength="2000" placeholder="The verse, word for word…"></textarea>
+      <label class="flabel" for="dvReflection">Reflection</label>
+      <textarea id="dvReflection" maxlength="3000" placeholder="Two or three warm sentences…"></textarea>
+      <label class="flabel" for="dvFocus">Prayer focus</label>
+      <textarea id="dvFocus" maxlength="1000" placeholder="One sentence to pray…"></textarea>
+      <div class="form-err" id="dvErr" role="alert"></div>
+      <div class="adminrow"><button class="btn btn-gold" id="dvSaveBtn">Save devotion</button></div>
+    </div>
+    <h2>Scheduled devotions</h2>
+    <div id="dvList"><div class="loading">Loading…</div></div>
+  </div>
 </section>
 
 <!-- ============ PRAYER TIMES ============ -->
@@ -1556,7 +1577,8 @@ sb.auth.onAuthStateChange(async (event,s)=>{
 
 /* ================= ADMIN ================= */
 async function loadAdmin(){
-  if(!(profile&&profile.is_admin)){ $('adminPrayers').innerHTML='<div class="empty">Admins only.</div>'; $('adminTestimonies').innerHTML=''; return; }
+  if(!(profile&&profile.is_admin)){ $('adminPrayers').innerHTML='<div class="empty">Admins only.</div>'; $('adminTestimonies').innerHTML=''; $('publishSection').style.display='none'; return; }
+  $('publishSection').style.display='';
   try{
     const pr=await sb.from('prayer_requests').select('id,body,created_at').eq('status','pending').order('created_at',{ascending:false});
     const tm=await sb.from('testimonies').select('id,body,created_at').eq('status','pending').order('created_at',{ascending:false});
@@ -1572,6 +1594,7 @@ async function loadAdmin(){
       :'<div class="empty">Nothing waiting. 🎉</div>');
     document.querySelectorAll('[data-ap]').forEach(b=>b.addEventListener('click',()=>moderate(b.dataset.ap,b.dataset.id,'approved')));
     document.querySelectorAll('[data-hd]').forEach(b=>b.addEventListener('click',()=>moderate(b.dataset.hd,b.dataset.id,'hidden')));
+    loadComposer();
   }catch(e){ toast('Could not load review queue'); }
 }
 async function moderate(table,id,status){
@@ -1582,6 +1605,63 @@ async function moderate(table,id,status){
     loadAdmin();
   }catch(e){ toast('Action failed — try again'); }
 }
+
+/* ================= DEVOTION COMPOSER ================= */
+function dvDefaultDate(){
+  const d=new Date(); d.setDate(d.getDate()+1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function fmtDateLong(iso){
+  try{ return new Date(iso+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'}); }
+  catch(e){ return iso; }
+}
+function dvError(msg){
+  const e=$('dvErr'); e.textContent=msg||''; e.style.display=msg?'':'none';
+}
+async function loadComposer(){
+  if(!(profile&&profile.is_admin)) return;
+  if(!$('dvDate').value) $('dvDate').value=dvDefaultDate();
+  try{
+    const {data,error}=await sb.from('devotions').select('devotion_date,verse_ref').gte('devotion_date',todayStr()).order('devotion_date',{ascending:true});
+    if(error) throw error;
+    $('dvList').innerHTML=(data&&data.length)?data.map(d=>
+      '<div class="card"><div class="body"><b>'+esc(fmtDateLong(d.devotion_date))+'</b> — '+esc(d.verse_ref)+'</div>'+
+      '<div class="adminrow"><button class="btn btn-sm" data-dvdel="'+d.devotion_date+'">Delete</button></div></div>').join('')
+      :'<div class="empty">No devotions scheduled yet.</div>';
+    document.querySelectorAll('[data-dvdel]').forEach(b=>b.addEventListener('click',()=>dvDelete(b.dataset.dvdel)));
+  }catch(e){ $('dvList').innerHTML='<div class="empty">Could not load scheduled devotions.</div>'; }
+}
+async function dvSave(){
+  const date=$('dvDate').value, ref=$('dvRef').value.trim(), text=$('dvText').value.trim(),
+        refl=$('dvReflection').value.trim(), focus=$('dvFocus').value.trim();
+  if(!date||!ref||!text||!refl||!focus){ dvError('Please fill in every field before saving.'); return; }
+  if(date<todayStr()){ dvError('Please choose today or a future date.'); return; }
+  dvError('');
+  const btn=$('dvSaveBtn'); btn.disabled=true;
+  try{
+    const {error}=await sb.from('devotions').upsert(
+      {devotion_date:date,verse_ref:ref,verse_text:text,reflection:refl,prayer_focus:focus},
+      {onConflict:'devotion_date'});
+    if(error) throw error;
+    toast('Devotion scheduled for '+fmtDateLong(date)+' 🕯️');
+    $('dvRef').value=''; $('dvText').value=''; $('dvReflection').value=''; $('dvFocus').value='';
+    $('dvDate').value=dvDefaultDate();
+    await loadComposer();
+    loadDevotion();
+  }catch(e){ dvError('Could not save — please check your connection and try again.'); }
+  btn.disabled=false;
+}
+async function dvDelete(date){
+  if(!confirm('Delete the devotion scheduled for '+fmtDateLong(date)+'?')) return;
+  try{
+    const {error}=await sb.from('devotions').delete().eq('devotion_date',date);
+    if(error) throw error;
+    toast('Devotion deleted');
+    await loadComposer();
+    loadDevotion();
+  }catch(e){ toast('Could not delete — please try again'); }
+}
+$('dvSaveBtn').addEventListener('click',dvSave);
 
 /* ================= PRAYER TIMES ================= */
 const PT_DEFAULTS=['06:00','12:00','21:00'];
