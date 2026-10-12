@@ -179,6 +179,13 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
 .adminrow{display:flex;gap:8px;margin-top:10px}
 .pending{border-left:3px solid #c96a4a}
 .signedin{font-size:.85rem;color:var(--muted)}
+/* ---------- bible plan ---------- */
+.bp-plans{display:grid;gap:10px;margin-top:10px}
+.bp-plan{border:1px solid var(--line);border-radius:12px;padding:12px}
+.bp-meta{color:var(--muted);font-size:.92rem}
+.bp-bar{height:8px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin:10px 0}
+.bp-bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-soft));border-radius:99px;transition:width .4s}
+.bp-chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 </style>
 </head>
 <body>
@@ -227,6 +234,8 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
     <div class="dev-ref" id="devCardRef">Loading today's devotion…</div>
     <div class="dev-focus" id="devCardFocus"></div>
   </div>
+
+  <div class="card" id="bpHomeCard" style="display:none;margin-top:10px"></div>
 
   <div class="card" id="watchWordCard" style="margin-top:10px">
     <div class="ww-label" id="watchWordLabel">This watch&rsquo;s word</div>
@@ -298,6 +307,7 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
 <section class="view" id="view-bible">
   <h1>Bible</h1>
   <p class="sub">The full 66-book Bible · five public-domain versions</p>
+  <div class="card" id="bpCard" style="margin-top:12px"></div>
   <div class="verbars" id="versionBar"></div>
   <div class="sizebar">
     <span class="lbl">Text size</span>
@@ -1394,6 +1404,105 @@ function renderPassage(){
   applyReaderSize();
 }
 
+/* ================= BIBLE PLAN ================= */
+function bpRange(a,b){ const r=[]; for(let i=a;i<=b;i++) r.push(i); return r; }
+const BP_PLANS=[
+  {id:'nt90', name:'New Testament in 90 Days', desc:'Matthew to Revelation — about 3 chapters a day.', days:90, books:bpRange(40,66)},
+  {id:'prov31', name:'Proverbs in 31 Days', desc:'One chapter of wisdom a day for a month.', days:31, books:[20]},
+  {id:'bible365', name:'The Whole Bible in a Year', desc:'Genesis to Revelation — about 3–4 chapters a day.', days:365, books:bpRange(1,66)}
+];
+const BP_PROMPTS=[
+  'Lord, write Your word on my heart today.',
+  'Father, open my eyes to see wonderful things in Your word.',
+  'Jesus, make me a doer of this word, not a hearer only.',
+  'Holy Spirit, teach me as I read — speak to my situation.'
+];
+let bpState=null;
+function bpLoad(){ try{ bpState=JSON.parse(localStorage.getItem('geth_bibleplan')||'null'); }catch(e){ bpState=null; } if(!bpState||typeof bpState!=='object') bpState={planId:null,done:0,lastDate:null,streak:0}; }
+function bpSave(){ try{ localStorage.setItem('geth_bibleplan',JSON.stringify(bpState)); }catch(e){} }
+function bpPlan(){ return BP_PLANS.find(function(p){ return p.id===bpState.planId; })||null; }
+function bpChapters(plan){ const out=[]; plan.books.forEach(function(b){ const n=BOOKS[b-1].chapters; for(let c=1;c<=n;c++) out.push([b,c]); }); return out; }
+function bpSplit(plan){
+  const all=bpChapters(plan), days=plan.days, out=[];
+  const base=Math.floor(all.length/days); let rem=all.length%days, i=0;
+  for(let d=0; d<days; d++){ const take=base+(rem>0?(rem--,1):0); out.push(all.slice(i,i+take)); i+=take; }
+  return out;
+}
+function bpDayLabel(list){
+  const parts=[]; let cur=null;
+  function flush(){ if(cur) parts.push(BOOKS[cur.b-1].name+' '+(cur.f===cur.l?cur.f:cur.f+'–'+cur.l)); }
+  list.forEach(function(bc){ const b=bc[0], c=bc[1];
+    if(cur&&cur.b===b&&c===cur.l+1){ cur.l=c; } else { flush(); cur={b:b,f:c,l:c}; }
+  });
+  flush(); return parts.join(' · ');
+}
+function bpYMD(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function bpStart(id){ bpState={planId:id,done:0,lastDate:null,streak:0}; bpSave(); renderBp(); renderBpHome(); toast('Plan started — Day 1 awaits 📖'); }
+function bpDone(){
+  const plan=bpPlan(); if(!plan) return;
+  const today=bpYMD();
+  if(bpState.lastDate===today){ toast('Day already complete — rest in it 🌿'); return; }
+  const y=new Date(); y.setDate(y.getDate()-1);
+  const yest=y.getFullYear()+'-'+String(y.getMonth()+1).padStart(2,'0')+'-'+String(y.getDate()).padStart(2,'0');
+  bpState.streak=(bpState.lastDate===yest)?(bpState.streak||0)+1:1;
+  bpState.lastDate=today; bpState.done=Math.min(bpState.done+1, plan.days);
+  bpSave(); renderBp(); renderBpHome();
+  toast(bpState.done>=plan.days?'🎉 Plan complete — well done, faithful reader!':'Day complete — grace upon grace 🌿');
+}
+function bpReset(){ if(!confirm('Leave this plan and start a different one? Your progress will be cleared.')) return; bpState={planId:null,done:0,lastDate:null,streak:0}; bpSave(); renderBp(); renderBpHome(); }
+function bpReadBook(b,c){ goChapter(b,c); setTimeout(function(){ const el=$('bibleText'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); },350); }
+function renderBp(){
+  const box=$('bpCard'); if(!box) return;
+  const plan=bpPlan();
+  if(!plan){
+    box.innerHTML='<h2 style="margin-top:0">📖 Bible Reading Plan</h2><p class="sub">Read the Word at a steady pace — prayer stays the heartbeat; Scripture feeds it.</p>'+
+      '<div class="bp-plans">'+BP_PLANS.map(function(p){
+        return '<div class="bp-plan"><div style="font-weight:700">'+esc(p.name)+'</div><div class="bp-meta">'+esc(p.desc)+'</div>'+
+        '<button class="btn btn-sm btn-gold" style="margin-top:8px" data-bpstart="'+p.id+'">Start this plan</button></div>';
+      }).join('')+'</div>';
+    box.querySelectorAll('[data-bpstart]').forEach(function(b){ b.addEventListener('click',function(){ bpStart(b.dataset.bpstart); }); });
+    return;
+  }
+  const chunks=bpSplit(plan);
+  const dayNum=Math.min(bpState.done+1, plan.days);
+  const list=chunks[dayNum-1]||[];
+  const doneToday=bpState.lastDate===bpYMD();
+  const finished=bpState.done>=plan.days;
+  const prompt=BP_PROMPTS[(dayNum-1)%BP_PROMPTS.length];
+  let html='<h2 style="margin-top:0">📖 '+esc(plan.name)+'</h2>'+
+    '<div class="bp-meta">Day '+dayNum+' of '+plan.days+(bpState.streak>1?' · 🔥 '+bpState.streak+'-day streak':'')+'</div>'+
+    '<div class="bp-bar"><i style="width:'+Math.round(bpState.done/plan.days*100)+'%"></i></div>';
+  if(finished){
+    html+='<p>🎉 <b>Plan complete!</b> You read it all — well done, faithful reader.</p><button class="btn btn-sm" id="bpChange">Choose another plan</button>';
+  } else {
+    html+='<div style="font-weight:700;margin:6px 0">'+esc(bpDayLabel(list))+'</div>'+
+      '<div class="bp-chips">'+list.map(function(bc){ return '<button class="btn btn-sm" data-bpb="'+bc[0]+'" data-bpc="'+bc[1]+'">'+esc(BOOKS[bc[0]-1].name)+' '+bc[1]+'</button>'; }).join('')+'</div>'+
+      '<div class="bp-meta">🙏 Pray: '+esc(prompt)+'</div>'+
+      '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">'+
+      (doneToday?'<button class="btn btn-sm" disabled>✓ Day complete</button>':'<button class="btn btn-sm btn-gold" id="bpDoneBtn">✓ Mark day complete</button>')+
+      '<button class="btn btn-sm" data-goto="guided">🙏 Pray now</button>'+
+      '<button class="btn btn-sm btn-ghost" id="bpChange">Change plan</button></div>';
+  }
+  box.innerHTML=html;
+  box.querySelectorAll('[data-bpb]').forEach(function(b){ b.addEventListener('click',function(){ bpReadBook(parseInt(b.dataset.bpb,10),parseInt(b.dataset.bpc,10)); }); });
+  const db=$('bpDoneBtn'); if(db) db.addEventListener('click',bpDone);
+  const ch=$('bpChange'); if(ch) ch.addEventListener('click',bpReset);
+  box.querySelectorAll('[data-goto]').forEach(function(b){ b.addEventListener('click',function(){ showView(b.dataset.goto); }); });
+}
+function renderBpHome(){
+  const box=$('bpHomeCard'); if(!box) return;
+  const plan=bpPlan();
+  if(!plan||bpState.done>=plan.days){ box.style.display='none'; return; }
+  const chunks=bpSplit(plan);
+  const dayNum=Math.min(bpState.done+1, plan.days);
+  const list=chunks[dayNum-1]||[];
+  box.style.display='';
+  box.innerHTML='<div class="bp-meta">📖 Today\u2019s reading · Day '+dayNum+' of '+plan.days+'</div>'+
+    '<div style="font-weight:700;margin:4px 0">'+esc(bpDayLabel(list))+'</div>'+
+    '<button class="btn btn-sm btn-gold" id="bpHomeGo">Read now</button>';
+  $('bpHomeGo').addEventListener('click',function(){ showView('bible'); setTimeout(function(){ const el=$('bpCard'); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); },150); });
+}
+
 /* ================= PRAYER WALL ================= */
 async function loadWall(){
   const box=$('wallList'); box.innerHTML='<div class="loading">Loading prayer requests…</div>';
@@ -2189,6 +2298,7 @@ function ptTick(){ renderPtBanner(); checkPtAlert(); }
   loadDevotion();
   loadPtLocal();
   renderPtAll();
+  bpLoad(); renderBp(); renderBpHome();
   ptTick();
   setInterval(ptTick,20000);
   updateHeroGarden(); renderWatchWord();
