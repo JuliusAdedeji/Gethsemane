@@ -1375,10 +1375,26 @@ function renderChapterVerses(book,ch,verses){
   let html='<div class="chapnav">'+navBtn(prev,prevLabel||'← Prev')+navBtn(next,nextLabel||'Next →')+'</div>';
   html+=verses.map(function(v){ return '<p><span class="vnum">'+v.v+'</span>'+esc(v.t)+'</p>'; }).join('');
   html+='<div class="chapnav">'+navBtn(prev,'← Prev')+navBtn(next,'Next →')+'</div>';
+  let bpFoot='';
+  if(bpState){
+    const pl=bpPlan();
+    if(pl&&bpState.done<pl.days){
+      const dayNum=Math.min(bpState.done+1, pl.days);
+      const list=(bpSplit(pl)[dayNum-1])||[];
+      if(list.some(function(bc){ return bc[0]===book&&bc[1]===ch; })){
+        const prompt=BP_PROMPTS[(dayNum-1)%BP_PROMPTS.length];
+        bpFoot='<div class="card" style="margin-top:14px"><div class="bp-meta">🙏 As you close this reading —</div>'+
+          '<div style="font-weight:700;margin:6px 0">'+esc(prompt)+'</div>'+
+          '<button class="btn btn-gold btn-sm" id="bpFootPray">🙏 Pray now</button></div>';
+      }
+    }
+  }
+  html+=bpFoot;
   $('bibleText').innerHTML=html;
   $('bibleText').querySelectorAll('[data-gob]').forEach(function(b){
     b.addEventListener('click',function(){ goChapter(parseInt(b.dataset.gob,10),parseInt(b.dataset.goc,10)); });
   });
+  const bpFp=$('bpFootPray'); if(bpFp) bpFp.addEventListener('click',function(){ showView('guided'); });
   applyReaderSize();
 }
 function renderPassageList(){
