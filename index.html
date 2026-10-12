@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Gethsemane build 2026-10-12-voice-c: post-reconnect deploy -->
+<!-- Gethsemane build 2026-10-12-voice-d: verse narration + sentence chunking -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -1397,6 +1397,7 @@ function renderChapterVerses(book,ch,verses){
     }
   }
   html+=bpFoot;
+  ttsBibleVerses=verses; ttsBibleRef=bk.name+' '+ch+' · '+VERSIONS[curVersion];
   $('bibleText').innerHTML=html;
   $('bibleText').querySelectorAll('[data-gob]').forEach(function(b){
     b.addEventListener('click',function(){ goChapter(parseInt(b.dataset.gob,10),parseInt(b.dataset.goc,10)); });
@@ -1424,12 +1425,18 @@ function renderPassage(){
   const p=PASSAGES.find(x=>x.id===curPassage);
   $('bibleRef').textContent=p.ref+' · '+VERSIONS[curVersion];
   $('bibleText').innerHTML=renderPassageText(p.v[curVersion]);
+  ttsBibleRef=p.ref+' · '+VERSIONS[curVersion];
+  ttsBibleVerses=String(p.v[curVersion]).split('\n').map(function(line){
+    const m=line.match(/^(\d+)\s+(.*)$/);
+    return m?{v:m[1],t:m[2]}:{v:0,t:line};
+  });
   applyReaderSize();
 }
 
 /* ================= AUDIO (TTS) ================= */
 let ttsQueue=[], ttsIdx=0, ttsPlaying=false, ttsKind=null;
 let ttsVoice=null, ttsVoicesHooked=false;
+let ttsBibleVerses=null, ttsBibleRef='';
 function ttsSupported(){ return ('speechSynthesis' in window); }
 function pickTtsVoice(){
   try{
@@ -1459,7 +1466,14 @@ function ttsRenderBtns(){
 function ttsTextFor(kind){
   function txt(id){ const el=$(id); return el?el.textContent:''; }
   let s='';
-  if(kind==='bible'){ s=txt('bibleRef')+'. '+($('bibleText')?$('bibleText').innerText:''); }
+  if(kind==='bible'){
+    s=txt('bibleRef')+'. ';
+    if(ttsBibleVerses&&ttsBibleVerses.length&&ttsBibleRef===txt('bibleRef')){
+      s+=ttsBibleVerses.map(function(x){ return x.v?('Verse '+x.v+'. '+x.t):x.t; }).join(' ');
+    }else{
+      s+=$('bibleText')?$('bibleText').innerText:'';
+    }
+  }
   else if(kind==='devotion'){ s=[txt('devVerseRef'),txt('devVerseText'),txt('devReflection'),'Prayer focus. '+txt('devFocus')].join('. '); }
   else if(kind==='step'){ s=txt('stepTitle')+'. '+txt('stepText'); }
   return s.replace(/\s+/g,' ').trim();
@@ -1478,13 +1492,33 @@ function ttsNext(){
   u.onerror=function(){ ttsPlaying=false; ttsKind=null; ttsRenderBtns(); };
   try{ speechSynthesis.speak(u); }catch(e){ ttsPlaying=false; ttsKind=null; ttsRenderBtns(); }
 }
+function ttsChunk(text){
+  const out=[];
+  const sents=text.match(/[^.!?]+[.!?]+["\u201d']?|[^.!?]+$/g)||[text];
+  let cur='';
+  sents.forEach(function(sn){
+    sn=sn.trim(); if(!sn) return;
+    if(cur&&(cur+' '+sn).length>230){ out.push(cur); cur=sn; }
+    else cur=cur?cur+' '+sn:sn;
+  });
+  if(cur) out.push(cur);
+  const fin=[];
+  out.forEach(function(c){
+    while(c.length>280){
+      let cut=c.lastIndexOf(' ',280); if(cut<40) cut=280;
+      fin.push(c.slice(0,cut)); c=c.slice(cut).trim();
+    }
+    if(c) fin.push(c);
+  });
+  return fin.length?fin:[text];
+}
 function ttsToggle(kind){
   if(!ttsSupported()){ toast('Voice is not available on this device'); return; }
   if(ttsPlaying&&ttsKind===kind){ ttsStop(); return; }
   const text=ttsTextFor(kind);
   if(!text||/loading chapter/i.test(text)){ toast('Wait for the text to load, then tap Listen'); return; }
   try{ speechSynthesis.cancel(); }catch(e){}
-  ttsQueue=text.match(/.{1,200}(?:\s|$)/g)||[text];
+  ttsQueue=ttsChunk(text);
   ttsIdx=0; ttsPlaying=true; ttsKind=kind; ttsRenderBtns(); ttsNext();
 }
 function bindTts(){
