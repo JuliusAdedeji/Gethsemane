@@ -274,6 +274,7 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
   </div>
   <button class="btn btn-gold" id="devPrayBtn" style="width:100%;padding:14px">Pray with today's devotion →</button>
   <button class="btn" id="devShareBtn" style="width:100%;padding:12px;margin-top:8px">📤 Share today’s verse</button>
+  <button class="btn tts-btn" data-tts="devotion" data-label="🔊 Listen to today's devotion" style="width:100%;padding:12px;margin-top:8px">🔊 Listen to today's devotion</button>
 </section>
 
 <!-- ============ GUIDED PRAYER ============ -->
@@ -287,6 +288,7 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
       <div class="step-text" id="stepText"></div>
       <div class="step-nav">
         <button class="btn" id="stepBack">← Back</button>
+        <button class="btn btn-sm tts-btn" id="stepListen" data-tts="step" data-label="🔊 Listen">🔊 Listen</button>
         <button class="btn btn-gold" id="stepNext">Next →</button>
       </div>
     </div>
@@ -330,6 +332,7 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
   </div>
   <div class="card">
     <div class="dev-ref" id="bibleRef"></div>
+    <div style="margin:6px 0"><button class="btn btn-sm tts-btn" data-tts="bible" data-label="🔊 Listen">🔊 Listen</button></div>
     <div class="scripture reader-text" id="bibleText"></div>
   </div>
 </section>
@@ -1204,6 +1207,7 @@ function fmtDate(iso){
 /* ================= NAVIGATION ================= */
 const VIEWS=['home','devotion','guided','bible','wall','testimony','love','listen','times','auth','admin'];
 function showView(name){
+  if(typeof ttsStop==='function') ttsStop();
   if(name!=='listen'&&typeof stopListen==='function') stopListen();
   VIEWS.forEach(v=>$('view-'+v).classList.toggle('active', v===name));
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.view===name));
@@ -1264,12 +1268,13 @@ function renderStep(){
   $('stepBack').style.visibility=stepIdx===0?'hidden':'visible';
   $('stepNext').textContent=stepIdx===PRAYER_STEPS.length-1?'Finish →':'Next →';
 }
-$('stepBack').addEventListener('click',()=>{ if(stepIdx>0){stepIdx--;renderStep();} });
+$('stepBack').addEventListener('click',()=>{ if(typeof ttsStop==='function') ttsStop(); if(stepIdx>0){stepIdx--;renderStep();} });
 $('stepNext').addEventListener('click',()=>{
+  if(typeof ttsStop==='function') ttsStop();
   if(stepIdx<PRAYER_STEPS.length-1){ stepIdx++; renderStep(); }
   else{ $('guidedBody').style.display='none'; $('guidedEnd').style.display=''; }
 });
-$('beginAgain').addEventListener('click',startGuided);
+$('beginAgain').addEventListener('click',()=>{ if(typeof ttsStop==='function') ttsStop(); startGuided(); });
 
 /* ================= BIBLE ================= */
 /* Full 66-book Bible via free public APIs (no key):
@@ -1348,6 +1353,7 @@ function markChapterBtn(ch){
 }
 function goChapter(book,ch){ pickBook(book); loadChapter(book,ch); }
 async function loadChapter(book,ch){
+  if(typeof ttsStop==='function') ttsStop();
   bibleMode='browse'; curBook=book; curChapter=ch;
   const mySeq=++bibleSeq;
   renderBookList(); markChapterBtn(ch);
@@ -1418,6 +1424,51 @@ function renderPassage(){
   $('bibleRef').textContent=p.ref+' · '+VERSIONS[curVersion];
   $('bibleText').innerHTML=renderPassageText(p.v[curVersion]);
   applyReaderSize();
+}
+
+/* ================= AUDIO (TTS) ================= */
+let ttsQueue=[], ttsIdx=0, ttsPlaying=false, ttsKind=null;
+function ttsSupported(){ return ('speechSynthesis' in window); }
+function ttsRenderBtns(){
+  document.querySelectorAll('.tts-btn').forEach(function(b){
+    const active=ttsPlaying&&b.dataset.tts===ttsKind;
+    b.textContent=active?'⏹ Stop':(b.dataset.label||'🔊 Listen');
+  });
+}
+function ttsTextFor(kind){
+  function txt(id){ const el=$(id); return el?el.textContent:''; }
+  let s='';
+  if(kind==='bible'){ s=txt('bibleRef')+'. '+($('bibleText')?$('bibleText').innerText:''); }
+  else if(kind==='devotion'){ s=[txt('devVerseRef'),txt('devVerseText'),txt('devReflection'),'Prayer focus. '+txt('devFocus')].join('. '); }
+  else if(kind==='step'){ s=txt('stepTitle')+'. '+txt('stepText'); }
+  return s.replace(/\s+/g,' ').trim();
+}
+function ttsStop(){
+  try{ if('speechSynthesis' in window) speechSynthesis.cancel(); }catch(e){}
+  ttsQueue=[]; ttsIdx=0; ttsPlaying=false; ttsKind=null; ttsRenderBtns();
+}
+function ttsNext(){
+  if(ttsIdx>=ttsQueue.length){ ttsPlaying=false; ttsKind=null; ttsRenderBtns(); return; }
+  const u=new SpeechSynthesisUtterance(ttsQueue[ttsIdx++]);
+  u.rate=0.98;
+  u.onend=function(){ if(ttsPlaying) ttsNext(); };
+  u.onerror=function(){ ttsPlaying=false; ttsKind=null; ttsRenderBtns(); };
+  try{ speechSynthesis.speak(u); }catch(e){ ttsPlaying=false; ttsKind=null; ttsRenderBtns(); }
+}
+function ttsToggle(kind){
+  if(!ttsSupported()){ toast('Voice is not available on this device'); return; }
+  if(ttsPlaying&&ttsKind===kind){ ttsStop(); return; }
+  const text=ttsTextFor(kind);
+  if(!text||/loading chapter/i.test(text)){ toast('Wait for the text to load, then tap Listen'); return; }
+  try{ speechSynthesis.cancel(); }catch(e){}
+  ttsQueue=text.match(/.{1,200}(?:\s|$)/g)||[text];
+  ttsIdx=0; ttsPlaying=true; ttsKind=kind; ttsRenderBtns(); ttsNext();
+}
+function bindTts(){
+  document.querySelectorAll('.tts-btn').forEach(function(b){
+    if(b.dataset.ttsBound) return; b.dataset.ttsBound='1';
+    b.addEventListener('click',function(){ ttsToggle(b.dataset.tts); });
+  });
 }
 
 /* ================= BIBLE PLAN ================= */
@@ -2315,6 +2366,7 @@ function ptTick(){ renderPtBanner(); checkPtAlert(); }
   loadPtLocal();
   renderPtAll();
   bpLoad(); renderBp(); renderBpHome();
+  bindTts();
   ptTick();
   setInterval(ptTick,20000);
   updateHeroGarden(); renderWatchWord();
