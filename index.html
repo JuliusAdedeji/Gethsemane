@@ -1429,7 +1429,27 @@ function renderPassage(){
 
 /* ================= AUDIO (TTS) ================= */
 let ttsQueue=[], ttsIdx=0, ttsPlaying=false, ttsKind=null;
+let ttsVoice=null, ttsVoicesHooked=false;
 function ttsSupported(){ return ('speechSynthesis' in window); }
+function pickTtsVoice(){
+  try{
+    const vs=speechSynthesis.getVoices().filter(function(v){ return v.lang&&v.lang.toLowerCase().indexOf('en')===0; });
+    if(!vs.length) return null;
+    const prefer=[/samantha/i,/google us english/i,/zira/i,/aria/i,/jenny/i,/alex/i,/daniel/i,/karen/i,/moira/i,/susan/i,/fiona/i];
+    for(let i=0;i<prefer.length;i++){
+      const m=vs.find(function(v){ return prefer[i].test(v.name); });
+      if(m) return m;
+    }
+    return vs.find(function(v){ return /en[-_]us/i.test(v.lang); })||vs[0];
+  }catch(e){ return null; }
+}
+function hookTtsVoices(){
+  if(ttsVoicesHooked||!ttsSupported()) return; ttsVoicesHooked=true;
+  try{
+    ttsVoice=pickTtsVoice();
+    speechSynthesis.onvoiceschanged=function(){ const v=pickTtsVoice(); if(v) ttsVoice=v; };
+  }catch(e){}
+}
 function ttsRenderBtns(){
   document.querySelectorAll('.tts-btn').forEach(function(b){
     const active=ttsPlaying&&b.dataset.tts===ttsKind;
@@ -1451,7 +1471,9 @@ function ttsStop(){
 function ttsNext(){
   if(ttsIdx>=ttsQueue.length){ ttsPlaying=false; ttsKind=null; ttsRenderBtns(); return; }
   const u=new SpeechSynthesisUtterance(ttsQueue[ttsIdx++]);
-  u.rate=0.98;
+  if(!ttsVoice) ttsVoice=pickTtsVoice();
+  if(ttsVoice) u.voice=ttsVoice;
+  u.rate=0.85; u.pitch=0.95;
   u.onend=function(){ if(ttsPlaying) ttsNext(); };
   u.onerror=function(){ ttsPlaying=false; ttsKind=null; ttsRenderBtns(); };
   try{ speechSynthesis.speak(u); }catch(e){ ttsPlaying=false; ttsKind=null; ttsRenderBtns(); }
@@ -1466,6 +1488,7 @@ function ttsToggle(kind){
   ttsIdx=0; ttsPlaying=true; ttsKind=kind; ttsRenderBtns(); ttsNext();
 }
 function bindTts(){
+  hookTtsVoices();
   document.querySelectorAll('.tts-btn').forEach(function(b){
     if(b.dataset.ttsBound) return; b.dataset.ttsBound='1';
     b.addEventListener('click',function(){ ttsToggle(b.dataset.tts); });
