@@ -543,7 +543,7 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
     <div style="font-size:2.4rem">🙏</div>
     <div class="pt-name" id="ptAlertName"></div>
     <div class="pt-verse" id="ptAlertVerse"></div>
-    <div class="pt-note">It's time to pray</div>
+    <div class="pt-note" id="ptAlertNote">It's time to pray</div>
     <div class="pt-actions">
       <button class="btn btn-gold" id="ptAlertPray">Begin prayer</button>
       <button class="btn" id="ptAlertSnooze">Snooze 10 min</button>
@@ -2036,11 +2036,13 @@ function ptChime(){
     });
   }catch(e){}
 }
-function firePtAlert(t,H){
+function firePtAlert(t,H,late){
   curAlertTime=t; curAlertHour=H;
   const w=watchFor(H);
   $('ptAlertName').textContent=w.name;
   $('ptAlertVerse').textContent=w.verse+' — '+w.ref;
+  if(late){ const h12=H%12||12, ap=H<12?'AM':'PM'; $('ptAlertNote').textContent='The '+w.name+' called at '+h12+':'+t.slice(3,5)+' '+ap+' — the door is still open'; }
+  else { $('ptAlertNote').textContent="It's time to pray"; }
   $('ptAlert').classList.add('open');
   ptChime();
   if(navigator.vibrate){ try{ navigator.vibrate([200,100,200]); }catch(e){} }
@@ -2064,7 +2066,7 @@ function checkPtAlert(){
     const H=+t.slice(0,2), M=+t.slice(3,5);
     const inst=instantOfWall(tz,wall.y,wall.mo,wall.d,H,M);
     const since=nowMs-inst;
-    if(since>=0&&since<120000){ ptAlertedToday[key]=true; firePtAlert(t,H); break; }
+    if(since>=0&&since<30*60000){ ptAlertedToday[key]=true; firePtAlert(t,H,Math.floor(since/60000)>2); break; }
   }
 }
 $('ptAlertPray').addEventListener('click',()=>{ hidePtAlert(); markPrayerFromReminder(); startGuided(); showView('guided'); });
