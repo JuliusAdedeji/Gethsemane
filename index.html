@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Gethsemane build 2026-10-13-prayvar: rotating guided-prayer language (4 variants/step, daily) -->
+<!-- Gethsemane build 2026-10-13-answered: mark-as-answered → testimony loop -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -1662,6 +1662,7 @@ function renderBpHome(){
 }
 
 /* ================= PRAYER WALL ================= */
+const wallBodies={};
 async function loadWall(){
   const box=$('wallList'); box.innerHTML='<div class="loading">Loading prayer requests…</div>';
   try{
@@ -1672,12 +1673,16 @@ async function loadWall(){
     if(!data||!data.length){ box.innerHTML='<div class="empty">No prayer requests yet — be the first to share one above. 🕯️</div>'; return; }
     box.innerHTML=data.map(r=>{
       const who=r.is_anonymous?'Anonymous':esc((r.profiles&&r.profiles.display_name)||'A friend');
+      wallBodies[r.id]=r.body;
+      const mine=session&&session.user&&r.user_id&&r.user_id===session.user.id;
+      const ansBtn=mine?' <button class="btn btn-sm btn-gold" data-ans="'+r.id+'">✨ Answered — share testimony</button>':'';
       return '<div class="card req"><div class="body">'+esc(r.body)+'</div>'+
         '<div class="meta"><span>'+who+' · '+fmtDate(r.created_at)+'</span>'+
         '<span class="count">🙏 <span id="pc-'+r.id+'">'+r.prayer_count+'</span> praying</span></div>'+
-        '<button class="btn btn-sm praybtn" data-rid="'+r.id+'">🙏 I\'m praying</button></div>';
+        '<button class="btn btn-sm praybtn" data-rid="'+r.id+'">🙏 I\'m praying</button>'+ansBtn+'</div>';
     }).join('');
     box.querySelectorAll('.praybtn').forEach(b=>b.addEventListener('click',()=>prayFor(b.dataset.rid,b)));
+    box.querySelectorAll('[data-ans]').forEach(b=>b.addEventListener('click',()=>markAnswered(b.dataset.ans)));
   }catch(e){ box.innerHTML='<div class="empty">Could not load the wall. Check your connection and try again.</div>'; }
 }
 async function prayFor(rid,btn){
@@ -1692,6 +1697,14 @@ async function prayFor(rid,btn){
       toast('🙏 Amen — heaven heard that');
     }
   }catch(e){ toast('Could not record that — please try again'); btn.disabled=false; }
+}
+/* ---- the answered-prayer loop: one tap turns an answered request into a testimony ---- */
+function markAnswered(rid){
+  const body=wallBodies[rid]||'';
+  showView('testimony');
+  $('tmBody').value='God answered this prayer: "'+body+'"\n\nHere is what the Lord did: ';
+  setTimeout(()=>{ try{ $('tmBody').focus(); $('tmBody').scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){} },200);
+  toast('Tell what the Lord has done ✨');
 }
 $('prayerForm').addEventListener('submit', async e=>{
   e.preventDefault();
