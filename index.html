@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Gethsemane build 2026-10-12-times2: prayer-times entry button under countdown banner -->
+<!-- Gethsemane build 2026-10-13-prayvar: rotating guided-prayer language (4 variants/step, daily) -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -1184,12 +1184,41 @@ function rotationDevotion(){
 }
 
 const PRAYER_STEPS = [
-  {t:'Stillness', d:'Close your eyes. Breathe slowly. You are in the garden with Jesus. Let the noise of the day fall quiet. He is near.'},
-  {t:'Thanksgiving', d:'Name three gifts from God — great or small. Thank Him aloud or in your heart for each one. Gratitude opens the door of prayer.'},
-  {t:'Intercession', d:'Bring the people and situations on your heart before Him now — by name, one by one. He hears every one.'},
-  {t:'Listening', d:'Be still for a few breaths. Prayer is not only speaking. Ask Him: "Lord, what would You say to me today?" — and listen.'},
-  {t:'Amen', d:'Seal it with a simple Amen. "Your will be done." Carry His peace into the rest of your day.'}
+  {t:'Stillness', d:[
+    'Close your eyes. Breathe slowly. You are in the garden with Jesus. Let the noise of the day fall quiet. He is near.',
+    'Be still. You have come into the presence of your God. Lay down the hurry, lay down the noise. He is here, and He is listening.',
+    'Shall we pray? Draw a slow breath. The garden is quiet, and the Lord is near. Let every anxious thought settle at His feet.',
+    'Pause. This moment is holy ground. Breathe in His peace, breathe out the weight of the day. You are not alone — He is with you.'
+  ]},
+  {t:'Thanksgiving', d:[
+    'Name three gifts from God — great or small. Thank Him aloud or in your heart for each one. Gratitude opens the door of prayer.',
+    'Count three mercies He has shown you — seen or unseen. Speak your thanks, one by one. A thankful heart prays with power.',
+    'What has the Lord done for you? Name three things, great or small, and give Him thanks for each. Gratitude turns the key of heaven.',
+    'Before you ask, give thanks. Recall three blessings — a breath, a mercy, a victory — and thank Him aloud or in your heart.'
+  ]},
+  {t:'Intercession', d:[
+    'Bring the people and situations on your heart before Him now — by name, one by one. He hears every one.',
+    'Who needs prayer today? Lift them before the throne — family, friends, nations — naming each one. No need is too small for Him.',
+    'Stand in the gap now. Bring every burden, every name, every situation before Him, one by one. He who hears in secret will answer.',
+    'Intercede. Lay the people you love and the troubles you carry at His feet — each by name. Heaven leans in when we pray for others.'
+  ]},
+  {t:'Listening', d:[
+    'Be still for a few breaths. Prayer is not only speaking. Ask Him: "Lord, what would You say to me today?" — and listen.',
+    'Quiet your heart. Prayer is a conversation, not a monologue. Ask Him: "Lord, speak — Your servant is listening." Then wait on Him.',
+    'Rest in the silence a moment. The Shepherd speaks, and His sheep know His voice. Ask Him: "What would You say to me today?" — and listen.',
+    'Do not rush past this. Be still and know that He is God. Ask Him: "Lord, what is on Your heart for me?" — and listen with an open heart.'
+  ]},
+  {t:'Amen', d:[
+    'Seal it with a simple Amen. "Your will be done." Carry His peace into the rest of your day.',
+    'Close with a confident Amen. "Your will be done, on earth as it is in heaven." Go in His peace — the garden goes with you.',
+    'Say Amen — so be it. "Your will be done." Rise from this place of prayer carrying His presence into every hour ahead.',
+    'End with Amen, and mean it. "Your will be done." Walk into the rest of your day knowing heaven heard you.'
+  ]}
 ];
+function prayerDayIdx(){
+  const n=new Date(), start=new Date(n.getFullYear(),0,0);
+  return Math.floor((n-start)/864e5);
+}
 
 /* ================= HELPERS ================= */
 const $ = id => document.getElementById(id);
@@ -1266,8 +1295,9 @@ function startGuided(){
 }
 function renderStep(){
   const s=PRAYER_STEPS[stepIdx];
+  const words=s.d[prayerDayIdx()%s.d.length];
   $('stepTitle').textContent='Step '+(stepIdx+1)+' — '+s.t;
-  $('stepText').textContent=s.d;
+  $('stepText').textContent=words;
   $('stepDots').innerHTML=PRAYER_STEPS.map((_,i)=>'<span class="dot'+(i===stepIdx?' on':'')+'"></span>').join('');
   $('stepBack').style.visibility=stepIdx===0?'hidden':'visible';
   $('stepNext').textContent=stepIdx===PRAYER_STEPS.length-1?'Finish →':'Next →';
