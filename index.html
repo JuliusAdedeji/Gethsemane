@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Gethsemane build 2026-10-12-voice-d: verse narration + sentence chunking -->
+<!-- Gethsemane build 2026-10-12-ptfix: custom prayer-time button repair -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -2117,7 +2117,7 @@ function updateHeroGarden(){
 }
 function arraysEq(a,b){ return a.length===b.length&&a.every((x,i)=>x===b[i]); }
 
-let ptTimes=PT_DEFAULTS.slice(), ptEnabled=true, ptStreak={count:0,lastDate:null};
+let ptTimes=PT_DEFAULTS.slice(), ptEnabled=true, ptStreak={count:0,lastDate:null}, ptCustom=false;
 
 function ptTz(){
   try{ return (profile&&profile.timezone)||Intl.DateTimeFormat().resolvedOptions().timeZone||'America/New_York'; }
@@ -2131,6 +2131,8 @@ function loadPtLocal(){
     if(e!==null) ptEnabled=e==='1';
     const s=JSON.parse(localStorage.getItem('geth_pt_streak')||'null');
     if(s&&typeof s.count==='number') ptStreak=s;
+    const c=localStorage.getItem('geth_pt_custom');
+    if(c!==null) ptCustom=c==='1';
   }catch(e){}
 }
 function savePtLocal(){
@@ -2138,6 +2140,7 @@ function savePtLocal(){
     localStorage.setItem('geth_pt_times',JSON.stringify(ptTimes));
     localStorage.setItem('geth_pt_enabled',ptEnabled?'1':'0');
     localStorage.setItem('geth_pt_streak',JSON.stringify(ptStreak));
+    localStorage.setItem('geth_pt_custom',ptCustom?'1':'0');
   }catch(e){}
 }
 async function savePt(){
@@ -2314,7 +2317,7 @@ $('ptAlertDismiss').addEventListener('click',hidePtAlert);
 /* ---- settings screen ---- */
 function renderTimesSettings(){
   $('ptEnableBtn').setAttribute('aria-checked',ptEnabled?'true':'false');
-  const isCustom=!Object.keys(PT_PRESETS).some(k=>arraysEq(PT_PRESETS[k],ptTimes));
+  const isCustom=ptCustom||!Object.keys(PT_PRESETS).some(k=>arraysEq(PT_PRESETS[k],ptTimes));
   $('ptPresets').querySelectorAll('button').forEach(b=>{
     const n=b.dataset.n;
     b.classList.toggle('on',(n==='custom')?isCustom:(!isCustom&&arraysEq(PT_PRESETS[n],ptTimes)));
@@ -2348,7 +2351,8 @@ function suggestTime(cur){
 }
 $('ptPresets').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
   const n=b.dataset.n;
-  if(n!=='custom') ptTimes=PT_PRESETS[n].slice();
+  if(n!=='custom'){ ptTimes=PT_PRESETS[n].slice(); ptCustom=false; }
+  else { ptCustom=true; }
   savePt();
 }));
 $('ptCountInput').addEventListener('change',()=>{
