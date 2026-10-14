@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Gethsemane build 2026-10-13-answered2: Stories tab renamed to Answered -->
+<!-- Gethsemane build 2026-10-13-prayerfirst1: Prayer-first Home — Pray now card moved above devotion; devotion relabeled Today's Word, fuel for prayer -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -233,7 +233,19 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
     <button class="btn btn-ghost btn-sm" data-goto="times">🕰️ Set my prayer times</button>
   </div>
 
-  <h1>Today's Devotion</h1>
+  <div class="card">
+    <h2 style="margin-top:0">Enter the garden</h2>
+    <p class="sub">Two minutes. One verse. One prayer. No guilt, only grace.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-gold" data-goto="guided" style="flex:1 1 100%;font-size:1.2rem;padding:15px 10px">🙏 Pray now — Enter the garden</button>
+      <button class="btn" data-goto="bible">📖 Open Bible</button>
+      <button class="btn" data-goto="wall">🕯️ Prayer Wall</button>
+      <button class="btn" data-goto="times">🕰️ Prayer times</button>
+    </div>
+  </div>
+
+  <h1 style="font-size:1.2rem">Today's Word</h1>
+  <p class="sub" style="margin:-6px 0 8px">Fuel for prayer.</p>
   <div class="card dev-card tappable" id="devotionCard">
     <div class="dev-ref" id="devCardRef">Loading today's devotion…</div>
     <div class="dev-focus" id="devCardFocus"></div>
@@ -245,17 +257,6 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
     <div class="ww-label" id="watchWordLabel">This watch&rsquo;s word</div>
     <div class="ww-text" id="watchWordText">&ldquo;&hellip;&rdquo;</div>
     <div class="ww-ref" id="watchWordRef"></div>
-  </div>
-
-  <div class="card">
-    <h2 style="margin-top:0">Enter the garden</h2>
-    <p class="sub">Two minutes. One verse. One prayer. No guilt, only grace.</p>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn btn-gold" data-goto="guided">🙏 Pray now</button>
-      <button class="btn" data-goto="bible">📖 Open Bible</button>
-      <button class="btn" data-goto="wall">🕯️ Prayer Wall</button>
-      <button class="btn" data-goto="times">🕰️ Prayer times</button>
-    </div>
   </div>
 </section>
 
