@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Gethsemane build 2026-10-13-prayerfirst1: Prayer-first Home — Pray now card moved above devotion; devotion relabeled Today's Word, fuel for prayer -->
+<!-- Gethsemane build 2026-10-14-answeredbadge1: Answered-prayer loop part 2 — '✨ Answered' gold badge on wall requests; owners set it with one tap; one-line SQL adds the answered flag -->\n<!-- Gethsemane build 2026-10-14-prayerfirst2: Enter the garden card moved above the prayer-times countdown — order is now Pray now, then schedule, then everything else -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -224,15 +224,6 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
     </div>
   </div>
 
-  <div class="card pt-banner tappable" id="ptBanner">
-    <div class="pt-next" id="ptBannerTitle">Loading prayer times…</div>
-    <div class="pt-verse" id="ptBannerVerse"></div>
-    <div class="pt-streak" id="ptBannerStreak"></div>
-  </div>
-  <div style="text-align:center;margin:2px 0 6px">
-    <button class="btn btn-ghost btn-sm" data-goto="times">🕰️ Set my prayer times</button>
-  </div>
-
   <div class="card">
     <h2 style="margin-top:0">Enter the garden</h2>
     <p class="sub">Two minutes. One verse. One prayer. No guilt, only grace.</p>
@@ -242,6 +233,15 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
       <button class="btn" data-goto="wall">🕯️ Prayer Wall</button>
       <button class="btn" data-goto="times">🕰️ Prayer times</button>
     </div>
+  </div>
+
+  <div class="card pt-banner tappable" id="ptBanner">
+    <div class="pt-next" id="ptBannerTitle">Loading prayer times…</div>
+    <div class="pt-verse" id="ptBannerVerse"></div>
+    <div class="pt-streak" id="ptBannerStreak"></div>
+  </div>
+  <div style="text-align:center;margin:2px 0 6px">
+    <button class="btn btn-ghost btn-sm" data-goto="times">🕰️ Set my prayer times</button>
   </div>
 
   <h1 style="font-size:1.2rem">Today's Word</h1>
