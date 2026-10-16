@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Gethsemane build 2026-10-14-answeredbadge1: Answered-prayer loop part 2 — '✨ Answered' gold badge on wall requests; owners set it with one tap; one-line SQL adds the answered flag -->\n<!-- Gethsemane build 2026-10-14-prayerfirst2: Enter the garden card moved above the prayer-times countdown — order is now Pray now, then schedule, then everything else -->
+<!-- Gethsemane build 2026-10-14-voicerecord2: record button now appears reliably (checked when Review opens, not just at page load) -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -464,6 +464,10 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
       </select>
       <label class="flabel" for="mdFile">Audio file</label>
       <input type="file" id="mdFile" accept="audio/*">
+      <div class="adminrow" id="mdRecordRow" style="display:none;margin-top:8px">
+        <button class="btn" id="mdRecordBtn" type="button">🎙️ Record instead</button>
+        <span class="pt-note" id="mdRecordStatus"></span>
+      </div>
       <div class="form-err" id="mdErr" role="alert"></div>
       <div class="adminrow"><button class="btn btn-gold" id="mdUploadBtn">Upload</button></div>
       <div class="pt-note" id="mdProgress" style="display:none"></div>
@@ -1471,7 +1475,8 @@ function renderPassage(){
 let ttsQueue=[], ttsIdx=0, ttsPlaying=false, ttsKind=null;
 let ttsVoice=null, ttsVoicesHooked=false;
 let ttsBibleVerses=null, ttsBibleRef='';
-function ttsSupported(){ return ('speechSynthesis' in window); }
+function nativeTts(){ try{ return isNativeApp() && !!(window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech); }catch(e){ return false; } }
+function ttsSupported(){ return nativeTts() || ('speechSynthesis' in window); }
 function pickTtsVoice(){
   try{
     const vs=speechSynthesis.getVoices().filter(function(v){ return v.lang&&v.lang.toLowerCase().indexOf('en')===0; });
@@ -1513,11 +1518,21 @@ function ttsTextFor(kind){
   return s.replace(/\s+/g,' ').trim();
 }
 function ttsStop(){
+  try{ if(nativeTts()) window.Capacitor.Plugins.TextToSpeech.stop(); }catch(e){}
   try{ if('speechSynthesis' in window) speechSynthesis.cancel(); }catch(e){}
   ttsQueue=[]; ttsIdx=0; ttsPlaying=false; ttsKind=null; ttsRenderBtns();
 }
+async function ttsNextNative(){
+  if(!ttsPlaying||ttsIdx>=ttsQueue.length){ ttsPlaying=false; ttsKind=null; ttsRenderBtns(); return; }
+  const chunk=ttsQueue[ttsIdx++];
+  try{
+    await window.Capacitor.Plugins.TextToSpeech.speak({text:chunk, lang:'en-US', rate:0.85, pitch:0.95, volume:1.0, category:'ambient'});
+  }catch(e){ if(ttsPlaying){ ttsPlaying=false; ttsKind=null; ttsRenderBtns(); } return; }
+  if(ttsPlaying) ttsNextNative();
+}
 function ttsNext(){
   if(ttsIdx>=ttsQueue.length){ ttsPlaying=false; ttsKind=null; ttsRenderBtns(); return; }
+  if(nativeTts()){ ttsNextNative(); return; }
   const u=new SpeechSynthesisUtterance(ttsQueue[ttsIdx++]);
   if(!ttsVoice) ttsVoice=pickTtsVoice();
   if(ttsVoice) u.voice=ttsVoice;
@@ -1552,6 +1567,7 @@ function ttsToggle(kind){
   const text=ttsTextFor(kind);
   if(!text||/loading chapter/i.test(text)){ toast('Wait for the text to load, then tap Listen'); return; }
   try{ speechSynthesis.cancel(); }catch(e){}
+  try{ if(nativeTts()) window.Capacitor.Plugins.TextToSpeech.stop(); }catch(e){}
   ttsQueue=ttsChunk(text);
   ttsIdx=0; ttsPlaying=true; ttsKind=kind; ttsRenderBtns(); ttsNext();
 }
@@ -1835,16 +1851,44 @@ function renderAuth(){
   $('tmNameWrap').style.display=guest?'none':'';
   $('tmGuestNote').style.display=guest?'':'none';
 }
+/* Native-app deep-link sign-in: magic-link taps return to the app via the
+   gethsemane:// custom scheme instead of getting stuck in the phone's browser. */
+function isNativeApp(){ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }
+async function handleAuthDeepLink(url){
+  try{
+    const u=new URL(url);
+    const q=new URLSearchParams(u.search);
+    const h=new URLSearchParams((u.hash||'').replace(/^#/,''));
+    const token_hash=q.get('token_hash');
+    if(token_hash){
+      const {error}=await sb.auth.verifyOtp({token_hash:token_hash, type:'magiclink'});
+      if(error) throw error;
+      toast('Signed in \u2014 welcome to the garden \uD83D\uDE4F');
+      return;
+    }
+    const access_token=h.get('access_token'), refresh_token=h.get('refresh_token');
+    if(access_token && refresh_token){
+      const {error}=await sb.auth.setSession({access_token:access_token, refresh_token:refresh_token});
+      if(error) throw error;
+      toast('Signed in \u2014 welcome to the garden \uD83D\uDE4F');
+      return;
+    }
+  }catch(e){ toast('That sign-in link didn\u2019t work \u2014 please try again.'); }
+}
+if(isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.App){
+  window.Capacitor.Plugins.App.addListener('appUrlOpen', function(event){ if(event && event.url) handleAuthDeepLink(event.url); });
+}
 $('authEmailForm').addEventListener('submit', async e=>{
   e.preventDefault();
   const email=$('authEmail').value.trim();
   if(!email) return;
-  $('authMsg').textContent='Sending link…';
+  $('authMsg').textContent='Sending link\u2026';
   try{
-    const {error}=await sb.auth.signInWithOtp({email:email, options:{emailRedirectTo:window.location.href}});
+    const redirectTo=isNativeApp()?'gethsemane://auth/callback':window.location.href;
+    const {error}=await sb.auth.signInWithOtp({email:email, options:{emailRedirectTo:redirectTo}});
     if(error) throw error;
-    $('authMsg').textContent='✅ Check your email for the sign-in link.';
-  }catch(e){ $('authMsg').textContent='Could not send the link — try again.'; }
+    $('authMsg').textContent='\u2705 Check your email for the sign-in link.';
+  }catch(e){ $('authMsg').textContent='Could not send the link \u2014 try again.'; }
 });
 $('signOutBtn').addEventListener('click', async ()=>{
   await sb.auth.signOut(); session=null; profile=null; renderAuth(); showView('home'); toast('Signed out');
@@ -2041,6 +2085,7 @@ function mdSetupNeeded(e){
 }
 async function loadMediaAdmin(){
   if(!(profile&&profile.is_admin)) return;
+  mdMaybeShowRecord();
   const box=$('mdList');
   box.innerHTML='<div class="loading">Loading…</div>';
   try{
@@ -2074,10 +2119,99 @@ function mdReadDuration(file){
     }catch(_){ resolve(null); }
   });
 }
+/* In-app voice recording (native app only): record a voice message or podcast
+   segment with the phone's microphone, then publish it like any audio file. */
+let mdRecordedFile=null, mdRecording=false;
+function nativeVoiceRec(){ try{ return isNativeApp() && !!(window.Capacitor.Plugins && window.Capacitor.Plugins.VoiceRecorder); }catch(e){ return false; } }
+/* Web fallback: record with the browser's own microphone (works on iPhone Safari,
+   Android Chrome, desktop) when the native plugin isn't available. */
+function webVoiceRec(){ try{ return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder); }catch(e){ return false; } }
+async function mdToggleRecord(){
+  if(nativeVoiceRec()){ await mdToggleRecordNative(); return; }
+  await mdToggleRecordWeb();
+}
+async function mdToggleRecordNative(){
+  const VR=window.Capacitor.Plugins.VoiceRecorder;
+  if(!mdRecording){
+    try{
+      const perm=await VR.requestAudioRecordingPermission();
+      if(!perm.value){ mdError('Microphone permission is needed to record — please allow it and try again.'); return; }
+      await VR.startRecording();
+      mdRecording=true;
+      $('mdRecordBtn').textContent='⏹ Stop recording';
+      $('mdRecordStatus').textContent='Recording… tap Stop when done.';
+      mdError('');
+    }catch(e){ mdError('Could not start recording — try again.'); }
+  }else{
+    try{
+      const res=await VR.stopRecording();
+      mdRecording=false;
+      $('mdRecordBtn').textContent='🎙️ Record instead';
+      const v=res.value||{};
+      const b64=v.recordDataBase64||'';
+      if(!b64) throw new Error('empty');
+      const mime=v.mimeType||'audio/mp4';
+      const bin=atob(b64), arr=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+      const ext=mime.indexOf('wav')>-1?'wav':(mime.indexOf('mpeg')>-1||mime.indexOf('mp3')>-1?'mp3':'m4a');
+      mdRecordedFile=new File([arr],'voice-'+Date.now()+'.'+ext,{type:mime});
+      const secs=Math.round((v.msDuration||0)/1000);
+      $('mdRecordStatus').textContent='Recorded '+secs+'s — ready to upload.';
+      mdError('');
+    }catch(e){
+      mdRecording=false;
+      $('mdRecordBtn').textContent='🎙️ Record instead';
+      $('mdRecordStatus').textContent='';
+      mdError('Recording failed — try again.');
+    }
+  }
+}
+/* Browser-based recording (iPhone Safari, Android Chrome, desktop). Uses the
+   standard MediaRecorder API — no app install and no $99 Apple fee needed. */
+let mdMediaRecorder=null, mdAudioChunks=[], mdMicStream=null, mdRecStart=0;
+function mdPickMime(){
+  const cands=['audio/mp4','audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus'];
+  for(const c of cands){ try{ if(window.MediaRecorder.isTypeSupported(c)) return c; }catch(e){} }
+  return '';
+}
+async function mdToggleRecordWeb(){
+  if(!mdRecording){
+    try{
+      mdMicStream=await navigator.mediaDevices.getUserMedia({audio:true});
+      const mime=mdPickMime();
+      mdAudioChunks=[];
+      mdMediaRecorder=new MediaRecorder(mdMicStream, mime?{mimeType:mime}:undefined);
+      mdMediaRecorder.ondataavailable=e=>{ if(e.data&&e.data.size) mdAudioChunks.push(e.data); };
+      mdMediaRecorder.onstop=()=>{
+        try{
+          const type=(mdMediaRecorder&&mdMediaRecorder.mimeType)||'audio/mp4';
+          const blob=new Blob(mdAudioChunks,{type:type});
+          const ext=type.indexOf('webm')>-1?'webm':(type.indexOf('ogg')>-1?'ogg':'m4a');
+          mdRecordedFile=new File([blob],'voice-'+Date.now()+'.'+ext,{type:type});
+          const secs=Math.max(1,Math.round((Date.now()-mdRecStart)/1000));
+          $('mdRecordStatus').textContent='Recorded '+secs+'s — ready to upload.';
+          mdError('');
+        }catch(e){ mdError('Recording failed — try again.'); }
+        mdRecording=false;
+        $('mdRecordBtn').textContent='🎙️ Record instead';
+        if(mdMicStream){ try{mdMicStream.getTracks().forEach(t=>t.stop());}catch(_){} mdMicStream=null; }
+      };
+      mdMediaRecorder.start();
+      mdRecStart=Date.now();
+      mdRecording=true;
+      $('mdRecordBtn').textContent='⏹ Stop recording';
+      $('mdRecordStatus').textContent='Recording… tap Stop when done.';
+      mdError('');
+    }catch(e){ mdError('Microphone blocked — please allow microphone access for this site and try again.'); }
+  }else{
+    try{ if(mdMediaRecorder&&mdMediaRecorder.state!=='inactive') mdMediaRecorder.stop(); }
+    catch(e){ mdRecording=false; $('mdRecordBtn').textContent='🎙️ Record instead'; }
+  }
+}
 async function mdUpload(){
-  const title=$('mdTitle').value.trim(), kind=$('mdKind').value, file=$('mdFile').files[0];
+  const title=$('mdTitle').value.trim(), kind=$('mdKind').value, file=mdRecordedFile||$('mdFile').files[0];
   if(!title){ mdError('Please give the broadcast a title.'); return; }
-  if(!file){ mdError('Please choose an audio file.'); return; }
+  if(!file){ mdError('Please choose an audio file, or record one.'); return; }
   mdError('');
   const btn=$('mdUploadBtn'), prog=$('mdProgress');
   btn.disabled=true; prog.style.display=''; prog.textContent='Preparing…';
@@ -2097,6 +2231,7 @@ async function mdUpload(){
     }
     toast('Broadcast published 🎙️');
     $('mdTitle').value=''; $('mdFile').value='';
+    mdRecordedFile=null; $('mdRecordStatus').textContent='';
     await loadMediaAdmin();
   }catch(e){
     mdError(mdSetupNeeded(e)
@@ -2116,6 +2251,15 @@ async function mdDelete(id,path){
   }catch(e){ toast('Could not delete — please try again'); }
 }
 $('mdUploadBtn').addEventListener('click',mdUpload);
+function mdMaybeShowRecord(){
+  try{
+    if((nativeVoiceRec()||webVoiceRec()) && $('mdRecordRow') && $('mdRecordRow').style.display==='none'){
+      $('mdRecordRow').style.display='';
+      $('mdRecordBtn').addEventListener('click',mdToggleRecord);
+    }
+  }catch(e){}
+}
+mdMaybeShowRecord();
 
 /* ================= PRAYER TIMES ================= */
 const PT_DEFAULTS=['06:00','12:00','21:00'];
