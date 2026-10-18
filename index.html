@@ -98,6 +98,8 @@ h2{font-family:var(--serif);font-size:1.3rem;color:var(--gold-soft);margin:18px 
 #bibleText p{margin-bottom:.9em}
 .chapgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:6px;margin:10px 0}
 .chapgrid .btn{padding:9px 2px;font-size:.85rem;text-align:center}
+.chappanel{grid-column:1/-1;background:var(--card2);border:1px solid var(--gold);border-radius:12px;padding:10px;margin:2px 0}
+.chappanel .chap-title{font-weight:700;margin:2px 2px 8px}
 .chapnav{display:flex;justify-content:space-between;gap:8px;margin:4px 0 14px}
 /* ---------- lists / forms ---------- */
 .req{border-left:3px solid var(--gold)}
@@ -323,18 +325,12 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
     <button id="bSizeUp" aria-label="Increase text size">A+</button>
     <span class="lbl" id="bSizeLabel">100%</span>
   </div>
-  <h2>Featured passages</h2>
-  <div class="passage-grid" id="passageList"></div>
-  <h2>Browse the full Bible</h2>
+  <h2>Choose a book — then a chapter</h2>
   <div class="verbars" id="testamentBar">
     <button class="btn btn-sm on" data-t="ot">Old Testament</button>
     <button class="btn btn-sm" data-t="nt">New Testament</button>
   </div>
   <div class="passage-grid" id="bookList"></div>
-  <div id="chapterWrap" style="display:none">
-    <div class="dev-ref" id="chapPickLabel" style="margin:8px 0 2px"></div>
-    <div class="chapgrid" id="chapterList"></div>
-  </div>
   <div class="card">
     <div class="dev-ref" id="bibleRef"></div>
     <div style="margin:6px 0"><button class="btn btn-sm tts-btn" data-tts="bible" data-label="🔊 Listen">🔊 Listen</button></div>
@@ -667,331 +663,10 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ================= BIBLE DATA (public domain) ================= */
 const VERSIONS = {kjv:'KJV', web:'WEB', asv:'ASV', ylt:'YLT', bbe:'BBE'};
-const PASSAGES = [
-{id:'ps23', ref:'Psalm 23', v:{
-kjv:`1 The LORD is my shepherd; I shall not want.
-2 He maketh me to lie down in green pastures: he leadeth me beside the still waters.
-3 He restoreth my soul: he leadeth me in the paths of righteousness for his name's sake.
-4 Yea, though I walk through the valley of the shadow of death, I will fear no evil: for thou art with me; thy rod and thy staff they comfort me.
-5 Thou preparest a table before me in the presence of mine enemies: thou anointest my head with oil; my cup runneth over.
-6 Surely goodness and mercy shall follow me all the days of my life: and I will dwell in the house of the LORD for ever.`,
-web:`1 Yahweh is my shepherd: I shall lack nothing.
-2 He makes me lie down in green pastures. He leads me beside still waters.
-3 He restores my soul. He guides me in the paths of righteousness for his name's sake.
-4 Even though I walk through the valley of the shadow of death, I will fear no evil, for you are with me. Your rod and your staff, they comfort me.
-5 You prepare a table before me in the presence of my enemies. You anoint my head with oil. My cup runs over.
-6 Surely goodness and loving kindness shall follow me all the days of my life, and I will dwell in Yahweh's house forever.`,
-asv:`1 Jehovah is my shepherd; I shall not want.
-2 He maketh me to lie down in green pastures; He leadeth me beside still waters.
-3 He restoreth my soul: He guideth me in the paths of righteousness for his name's sake.
-4 Yea, though I walk through the valley of the shadow of death, I will fear no evil; for thou art with me; Thy rod and thy staff, they comfort me.
-5 Thou preparest a table before me in the presence of mine enemies: Thou hast anointed my head with oil; My cup runneth over.
-6 Surely goodness and lovingkindness shall follow me all the days of my life; And I shall dwell in the house of Jehovah for ever.`,
-ylt:`1 A Psalm of David. Jehovah is my shepherd, I do not lack,
-2 In pastures of tender grass He causeth me to lie down, By quiet waters He guideth me.
-3 My soul He refresheth, He leadeth me in paths of righteousness, For His name's sake,
-4 Also -- when I walk in a valley of death-shade, I fear no evil, for Thou art with me, Thy rod and Thy staff -- they comfort me.
-5 Thou arrangest before me a table, Over-against my adversaries, Thou hast anointed with oil my head, My cup is full!
-6 Only -- goodness and kindness pursue me, All the days of my life, And my dwelling is in the house of Jehovah, For a length of days!`,
-bbe:`1 The Lord takes care of me as his sheep; I will not be without any good thing;
-2 He makes a resting-place for me in the green fields: he is my guide by the quiet waters.
-3 He gives new life to my soul: he is my guide in the ways of righteousness because of his name.
-4 Yes, though I go through the valley of deep shade, I will have no fear of evil; for you are with me, your rod and your support are my comfort.
-5 You make ready a table for me in front of my haters: you put oil on my head; my cup is overflowing.
-6 Truly, blessing and mercy will be with me all the days of my life; and I will have a place in the house of the Lord all my days.`}},
-{id:'ps91', ref:'Psalm 91', v:{
-kjv:`1 He that dwelleth in the secret place of the most High shall abide under the shadow of the Almighty.
-2 I will say of the LORD, He is my refuge and my fortress: my God; in him will I trust.
-3 Surely he shall deliver thee from the snare of the fowler, and from the noisome pestilence.
-4 He shall cover thee with his feathers, and under his wings shalt thou trust: his truth shall be thy shield and buckler.
-5 Thou shalt not be afraid for the terror by night; nor for the arrow that flieth by day;
-6 Nor for the pestilence that walketh in darkness; nor for the destruction that wasteth at noonday.
-7 A thousand shall fall at thy side, and ten thousand at thy right hand; but it shall not come nigh thee.
-8 Only with thine eyes shalt thou behold and see the reward of the wicked.
-9 Because thou hast made the LORD, which is my refuge, even the most High, thy habitation;
-10 There shall no evil befall thee, neither shall any plague come nigh thy dwelling.
-11 For he shall give his angels charge over thee, to keep thee in all thy ways.
-12 They shall bear thee up in their hands, lest thou dash thy foot against a stone.
-13 Thou shalt tread upon the lion and adder: the young lion and the dragon shalt thou trample under feet.
-14 Because he hath set his love upon me, therefore will I deliver him: I will set him on high, because he hath known my name.
-15 He shall call upon me, and I will answer him: I will be with him in trouble; I will deliver him, and honour him.
-16 With long life will I satisfy him, and shew him my salvation.`,
-web:`1 He who dwells in the secret place of the Most High will rest in the shadow of the Almighty.
-2 I will say of Yahweh, "He is my refuge and my fortress; my God, in whom I trust."
-3 For he will deliver you from the snare of the fowler, and from the deadly pestilence.
-4 He will cover you with his feathers. Under his wings you will take refuge. His faithfulness is your shield and rampart.
-5 You shall not be afraid of the terror by night, nor of the arrow that flies by day;
-6 nor of the pestilence that walks in darkness, nor of the destruction that wastes at noonday.
-7 A thousand may fall at your side, and ten thousand at your right hand; but it will not come near you.
-8 You will only look with your eyes, and see the recompense of the wicked.
-9 Because you have made Yahweh your refuge, and the Most High your dwelling place,
-10 no evil shall happen to you, neither shall any plague come near your dwelling.
-11 For he will put his angels in charge of you, to guard you in all your ways.
-12 They will bear you up in their hands, so that you won't dash your foot against a stone.
-13 You will tread on the lion and cobra. You will trample the young lion and the serpent underfoot.
-14 "Because he has set his love on me, therefore I will deliver him. I will set him on high, because he has known my name.
-15 He will call on me, and I will answer him. I will be with him in trouble. I will deliver him, and honor him.
-16 I will satisfy him with long life, and show him my salvation."`,
-asv:`1 He that dwelleth in the secret place of the Most High Shall abide under the shadow of the Almighty.
-2 I will say of Jehovah, He is my refuge and my fortress; My God, in whom I trust.
-3 For he will deliver thee from the snare of the fowler, And from the deadly pestilence.
-4 He will cover thee with his pinions, And under his wings shalt thou take refuge: His truth is a shield and a buckler.
-5 Thou shalt not be afraid for the terror by night, Nor for the arrow that flieth by day;
-6 For the pestilence that walketh in darkness, Nor for the destruction that wasteth at noonday.
-7 A thousand shall fall at thy side, And ten thousand at thy right hand; But it shall not come nigh thee.
-8 Only with thine eyes shalt thou behold, And see the reward of the wicked.
-9 For thou, O Jehovah, art my refuge! Thou hast made the Most High thy habitation;
-10 There shall no evil befall thee, Neither shall any plague come nigh thy tent.
-11 For he will give his angels charge over thee, To keep thee in all thy ways.
-12 They shall bear thee up in their hands, Lest thou dash thy foot against a stone.
-13 Thou shalt tread upon the lion and adder: The young lion and the serpent shalt thou trample under foot.
-14 Because he hath set his love upon me, therefore will I deliver him: I will set him on high, because he hath known my name.
-15 He shall call upon me, and I will answer him; I will be with him in trouble: I will deliver him, and honor him.
-16 With long life will I satisfy him, And show him my salvation.`,
-ylt:`1 He who is dwelling In the secret place of the Most High, In the shade of the Mighty lodgeth habitually,
-2 He is saying of Jehovah, 'My refuge, and my bulwark, my God, I trust in Him,'
-3 For He delivereth thee from the snare of a fowler, From a calamitous pestilence.
-4 With His pinion He covereth thee over, And under His wings thou dost trust, A shield and buckler is His truth.
-5 Thou art not afraid of fear by night, Of arrow that flieth by day,
-6 Of pestilence in thick darkness that walketh, Of destruction that destroyeth at noon,
-7 There fall at thy side a thousand, And a myriad at thy right hand, Unto thee it cometh not nigh.
-8 But with thine eyes thou lookest, And the reward of the wicked thou seest,
-9 (For Thou, O Jehovah, art my refuge,) The Most High thou madest thy habitation.
-10 Evil happeneth not unto thee, And a plague cometh not near thy tent,
-11 For His messengers He chargeth for thee, To keep thee in all thy ways,
-12 On the hands they bear thee up, Lest thou smite against a stone thy foot.
-13 On lion and asp thou treadest, Thou trampest young lion and dragon.
-14 Because in Me he hath delighted, I also deliver him -- I set him on high, Because he hath known My name.
-15 He doth call Me, and I answer him, I am with him in distress, I deliver him, and honour him.
-16 With length of days I satisfy him, And I cause him to look on My salvation!`,
-bbe:`1 Happy is he whose resting-place is in the secret of the Lord, and under the shade of the wings of the Most High;
-2 Who says of the Lord, He is my safe place and my tower of strength: he is my God, in whom is my hope.
-3 He will take you out of the bird-net, and keep you safe from wasting disease.
-4 You will be covered by his feathers; under his wings you will be safe: his good faith will be your salvation.
-5 You will have no fear of the evil things of the night, or the arrow in flight by day,
-6 Or of the disease which takes men in the dark, or of the destruction which makes waste when the sun is high.
-7 You will see a thousand falling by your side, and ten thousand at your right hand; but it will not come near you.
-8 Only with your eyes will you see the reward of the evil-doers.
-9 Because you have said, I am in the hands of the Lord, the Most High is my safe resting-place;
-10 No evil will come to you, and no disease will come near your tent.
-11 For he will give his angels orders to take care of you, wherever you go.
-12 In their hands they will keep you up, so that your foot may not be crushed against a stone.
-13 You will put your foot on the lion and the snake; the young lion and the great snake will be crushed under your feet.
-14 Because he has given me his love, I will take him out of danger: I will put him in a place of honour, because he has kept my name in his heart.
-15 When his cry comes up to me, I will give him an answer: I will be with him in trouble; I will make him free from danger and give him honour.
-16 With long life will he be rewarded; and I will let him see my salvation.`}},
-{id:'jn316', ref:'John 3:16–21', v:{
-kjv:`16 For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.
-17 For God sent not his Son into the world to condemn the world; but that the world through him might be saved.
-18 He that believeth on him is not condemned: but he that believeth not is condemned already, because he hath not believed in the name of the only begotten Son of God.
-19 And this is the condemnation, that light is come into the world, and men loved darkness rather than light, because their deeds were evil.
-20 For every one that doeth evil hateth the light, neither cometh to the light, lest his deeds should be reproved.
-21 But he that doeth truth cometh to the light, that his deeds may be made manifest, that they are wrought in God.`,
-web:`16 For God so loved the world, that he gave his one and only Son, that whoever believes in him should not perish, but have eternal life.
-17 For God didn't send his Son into the world to judge the world, but that the world should be saved through him.
-18 He who believes in him is not judged. He who doesn't believe has been judged already, because he has not believed in the name of the one and only Son of God.
-19 This is the judgment, that the light has come into the world, and men loved the darkness rather than the light; for their works were evil.
-20 For everyone who does evil hates the light, and doesn't come to the light, lest his works would be exposed.
-21 But he who does the truth comes to the light, that his works may be revealed, that they have been done in God.`,
-asv:`16 For God so loved the world, that he gave his only begotten Son, that whosoever believeth on him should not perish, but have eternal life.
-17 For God sent not the Son into the world to judge the world; but that the world should be saved through him.
-18 He that believeth on him is not judged: he that believeth not hath been judged already, because he hath not believed on the name of the only begotten Son of God.
-19 And this is the judgment, that the light is come into the world, and men loved the darkness rather than the light; for their works were evil.
-20 For every one that doeth evil hateth the light, and cometh not to the light, lest his works should be reproved.
-21 But he that doeth the truth cometh to the light, that his works may be made manifest, that they have been wrought in God.`,
-ylt:`16 for God did so love the world, that His Son -- the only begotten -- He gave, that every one who is believing in him may not perish, but may have life age-during.
-17 For God did not send His Son to the world that he may judge the world, but that the world may be saved through him;
-18 he who is believing in him is not judged, but he who is not believing hath been judged already, because he hath not believed in the name of the only begotten Son of God.
-19 And this is the judgment, that the light hath come to the world, and men did love the darkness rather than the light, for their works were evil;
-20 for every one who is doing wicked things hateth the light, and doth not come unto the light, that his works may not be detected;
-21 but he who is doing the truth doth come to the light, that his works may be manifested, that in God they are having been wrought.`,
-bbe:`16 For God had such love for the world that he gave his only Son, so that whoever has faith in him may not come to destruction but have eternal life.
-17 God did not send his Son into the world to be judge of the world; he sent him so that the world might have salvation through him.
-18 The man who has faith in him does not come up to be judged; but he who has no faith in him has been judged even now, because he has no faith in the name of the only Son of God.
-19 And this is the test by which men are judged: the light has come into the world and men have more love for the dark than for the light, because their acts are evil.
-20 The light is hated by everyone whose acts are evil and he does not come to the light for fear that his acts will be seen.
-21 But he whose life is true comes to the light, so that it may be clearly seen that his acts have been done by the help of God.`}},
-{id:'ro828', ref:'Romans 8:28–39', v:{
-kjv:`28 And we know that all things work together for good to them that love God, to them who are the called according to his purpose.
-29 For whom he did foreknow, he also did predestinate to be conformed to the image of his Son, that he might be the firstborn among many brethren.
-30 Moreover whom he did predestinate, them he also called: and whom he called, them he also justified: and whom he justified, them he also glorified.
-31 What shall we then say to these things? If God be for us, who can be against us?
-32 He that spared not his own Son, but delivered him up for us all, how shall he not with him also freely give us all things?
-33 Who shall lay any thing to the charge of God's elect? It is God that justifieth.
-34 Who is he that condemneth? It is Christ that died, yea rather, that is risen again, who is even at the right hand of God, who also maketh intercession for us.
-35 Who shall separate us from the love of Christ? shall tribulation, or distress, or persecution, or famine, or nakedness, or peril, or sword?
-36 As it is written, For thy sake we are killed all the day long; we are accounted as sheep for the slaughter.
-37 Nay, in all these things we are more than conquerors through him that loved us.
-38 For I am persuaded, that neither death, nor life, nor angels, nor principalities, nor powers, nor things present, nor things to come,
-39 Nor height, nor depth, nor any other creature, shall be able to separate us from the love of God, which is in Christ Jesus our Lord.`,
-web:`28 We know that all things work together for good for those who love God, to those who are called according to his purpose.
-29 For whom he foreknew, he also predestined to be conformed to the image of his Son, that he might be the firstborn among many brothers.
-30 Whom he predestined, those he also called. Whom he called, those he also justified. Whom he justified, those he also glorified.
-31 What then shall we say about these things? If God is for us, who can be against us?
-32 He who didn't spare his own Son, but delivered him up for us all, how would he not also with him freely give us all things?
-33 Who could bring a charge against God's chosen ones? It is God who justifies.
-34 Who is he who condemns? It is Christ who died, yes rather, who was raised from the dead, who is at the right hand of God, who also makes intercession for us.
-35 Who shall separate us from the love of Christ? Could oppression, or anguish, or persecution, or famine, or nakedness, or peril, or sword?
-36 Even as it is written, "For your sake we are killed all day long. We were accounted as sheep for the slaughter."
-37 No, in all these things, we are more than conquerors through him who loved us.
-38 For I am persuaded that neither death, nor life, nor angels, nor principalities, nor things present, nor things to come, nor powers,
-39 nor height, nor depth, nor any other created thing will be able to separate us from God's love which is in Christ Jesus our Lord.`,
-asv:`28 And we know that to them that love God all things work together for good, even to them that are called according to his purpose.
-29 For whom he foreknew, he also foreordained to be conformed to the image of his Son, that he might be the firstborn among many brethren:
-30 and whom he foreordained, them he also called: and whom he called, them he also justified: and whom he justified, them he also glorified.
-31 What then shall we say to these things? If God is for us, who is against us?
-32 He that spared not his own Son, but delivered him up for us all, how shall he not also with him freely give us all things?
-33 Who shall lay anything to the charge of God's elect? It is God that justifieth;
-34 who is he that condemneth? It is Christ Jesus that died, yea rather, that was raised from the dead, who is at the right hand of God, who also maketh intercession for us.
-35 Who shall separate us from the love of Christ? shall tribulation, or anguish, or persecution, or famine, or nakedness, or peril, or sword?
-36 Even as it is written, For thy sake we are killed all the day long; We were accounted as sheep for the slaughter.
-37 Nay, in all these things we are more than conquerors through him that loved us.
-38 For I am persuaded, that neither death, nor life, nor angels, nor principalities, nor things present, nor things to come, nor powers,
-39 nor height, nor depth, nor any other creature, shall be able to separate us from the love of God, which is in Christ Jesus our Lord.`,
-ylt:`28 And we have known that to those loving God all things do work together for good, to those who are called according to purpose;
-29 because whom He did foreknow, He also did fore-appoint, conformed to the image of His Son, that he might be first-born among many brethren;
-30 and whom He did fore-appoint, these also He did call; and whom He did call, these also He declared righteous; and whom He declared righteous, these also He did glorify.
-31 What, then, shall we say unto these things? if God is for us, who is against us?
-32 He who indeed His own Son did not spare, but for us all did deliver him up, how shall He not also with him the all things grant to us?
-33 Who shall lay a charge against the choice ones of God? God is He that is declaring righteous,
-34 who is he that is condemning? Christ is He that died, yea, rather also, was raised up; who is also on the right hand of God -- who also doth intercede for us.
-35 Who shall separate us from the love of the Christ? tribulation, or distress, or persecution, or famine, or nakedness, or peril, or sword?
-36 (according as it hath been written -- 'For Thy sake we are put to death all the day long, we were reckoned as sheep of slaughter,')
-37 but in all these we more than conquer, through him who loved us;
-38 for I am persuaded that neither death, nor life, nor messengers, nor principalities, nor powers, nor things present,
-39 nor things about to be, nor height, nor depth, nor any other created thing, shall be able to separate us from the love of God, that is in Christ Jesus our Lord.`,
-bbe:`28 And we are conscious that all things are working together for good to those who have love for God, and have been marked out by his purpose.
-29 Because those of whom he had knowledge before they came into existence, were marked out by him to be made like his Son, so that he might be the first among a band of brothers:
-30 And those who were marked out by him as these, he also called; and those whom he called, he also made upright; and those whom he made upright, he also gave glory.
-31 What may we say about these things? If God is for us, who is against us?
-32 He who did not keep back his only Son, but gave him up for us all, will he not with him freely give us all things?
-33 Who will say anything against the saints of God? It is God who makes us clear from evil;
-34 Who is against us? Christ Jesus is dead; yes, he has come back to life, and is now at the right hand of God, and makes requests for us.
-35 Who will come between us and the love of Christ? Will trouble, or pain, or cruel acts, or the need of food or clothes, or danger, or the sword?
-36 As it is said in the holy Writings, Because of you we are put to death every day; we are like sheep ready for destruction.
-37 But we are able to overcome all these things and more through his love.
-38 For I am certain that not death, or life, or angels, or rulers, or things present, or things to come, or powers,
-39 Or things on high, or things under the earth, or anything which is made, will be able to come between us and the love of God which is in Christ Jesus our Lord.`}},
-{id:'ph44', ref:'Philippians 4:4–9', v:{
-kjv:`4 Rejoice in the Lord alway: and again I say, Rejoice.
-5 Let your moderation be known unto all men. The Lord is at hand.
-6 Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let your requests be made known unto God.
-7 And the peace of God, which passeth all understanding, shall keep your hearts and minds through Christ Jesus.
-8 Finally, brethren, whatsoever things are true, whatsoever things are honest, whatsoever things are just, whatsoever things are pure, whatsoever things are lovely, whatsoever things are of good report; if there be any virtue, and if there be any praise, think on these things.
-9 Those things, which ye have both learned, and received, and heard, and seen in me, do: and the God of peace shall be with you.`,
-web:`4 Rejoice in the Lord always! Again I will say, "Rejoice!"
-5 Let your gentleness be known to all men. The Lord is at hand.
-6 In nothing be anxious, but in everything, by prayer and petition with thanksgiving, let your requests be made known to God.
-7 And the peace of God, which surpasses all understanding, will guard your hearts and your thoughts in Christ Jesus.
-8 Finally, brothers, whatever things are true, whatever things are honorable, whatever things are just, whatever things are pure, whatever things are lovely, whatever things are of good report: if there is any virtue and if there is anything worthy of praise, think about these things.
-9 Do the things which you learned, received, heard, and saw in me, and the God of peace will be with you.`,
-asv:`4 Rejoice in the Lord always: again I will say, Rejoice.
-5 Let your forbearance be known unto all men. The Lord is at hand.
-6 In nothing be anxious; but in everything by prayer and supplication with thanksgiving let your requests be made known unto God.
-7 And the peace of God, which passeth all understanding, shall guard your hearts and your thoughts in Christ Jesus.
-8 Finally, brethren, whatsoever things are true, whatsoever things are honorable, whatsoever things are just, whatsoever things are pure, whatsoever things are lovely, whatsoever things are of good report; if there be any virtue, and if there be any praise, think on these things.
-9 The things which ye both learned and received and heard and saw in me, these things do: and the God of peace shall be with you.`,
-ylt:`4 Rejoice in the Lord always; again I will say, rejoice;
-5 let your forbearance be known to all men; the Lord is near;
-6 for nothing be anxious, but in everything by prayer, and by supplication, with thanksgiving, let your requests be made known unto God;
-7 and the peace of God, that is surpassing all understanding, shall guard your hearts and your thoughts in Christ Jesus.
-8 As to the rest, brethren, as many things as are true, as many as are grave, as many as are righteous, as many as are pure, as many as are lovely, as many as are of good report, if any worthiness, and if any praise, these things think upon;
-9 the things that also ye did learn, and receive, and hear, and saw in me, those do, and the God of the peace shall be with you.`,
-bbe:`4 Be glad in the Lord at all times: again I say, Be glad.
-5 Let your gentle behaviour be clear to all men. The Lord is near.
-6 Have no cares; but in everything with prayer and praise put your requests before God.
-7 And the peace of God, which is deeper than all knowledge, will keep your hearts and minds in Christ Jesus.
-8 For the rest, my brothers, whatever things are true, whatever things have honour, whatever things are upright, whatever things are holy, whatever things are beautiful, whatever things are of value: give thought to these things.
-9 The things which came to you by my teaching and preaching, and which you saw in me, these things do, and the God of peace will be with you.`}},
-{id:'is4028', ref:'Isaiah 40:28–31', v:{
-kjv:`28 Hast thou not known? hast thou not heard, that the everlasting God, the LORD, the Creator of the ends of the earth, fainteth not, neither is weary? there is no searching of his understanding.
-29 He giveth power to the faint; and to them that have no might he increaseth strength.
-30 Even the youths shall faint and be weary, and the young men shall utterly fall:
-31 But they that wait upon the LORD shall renew their strength; they shall mount up with wings as eagles; they shall run, and not be weary; and they shall walk, and not faint.`,
-web:`28 Haven't you known? Haven't you heard? The everlasting God, Yahweh, the Creator of the ends of the earth, doesn't faint. He isn't weary. His understanding is unsearchable.
-29 He gives power to the weak. He increases the strength of him who has no might.
-30 Even the youths faint and get weary, and the young men utterly fall;
-31 but those who wait for Yahweh will renew their strength. They will mount up with wings like eagles. They will run, and not be weary. They will walk, and not faint.`,
-asv:`28 Hast thou not known? hast thou not heard? The everlasting God, Jehovah, the Creator of the ends of the earth, fainteth not, neither is weary; there is no searching of his understanding.
-29 He giveth power to the faint; and to him that hath no might he increaseth strength.
-30 Even the youths shall faint and be weary, and the young men shall utterly fall:
-31 but they that wait for Jehovah shall renew their strength; they shall mount up with wings as eagles; they shall run, and not be weary; they shall walk, and not faint.`,
-ylt:`28 Hast thou not known? Hast thou not heard? The God of the age -- Jehovah, Preparer of the ends of the earth, Is not wearied nor fatigued, There is no searching of His understanding.
-29 He is giving power to the weary, And to those not strong He increaseth might.
-30 Even youths are wearied and fatigued, And young men utterly stumble,
-31 But those expecting Jehovah pass to power, They raise up the pinion as eagles, They run and are not fatigued, They go on and do not faint!`,
-bbe:`28 Have you no knowledge of it? has it not come to your ears? The eternal God, the Lord, the Maker of the ends of the earth, is never feeble or tired; there is no searching out of his wisdom.
-29 He gives power to the feeble, increasing the strength of him who has no force.
-30 Even the young men will become feeble and tired, and the best of them will come to the end of his strength;
-31 But those who are waiting for the Lord will have new strength; they will get wings like eagles: running, they will not be tired, and walking, they will have no weariness.`}},
-{id:'mt69', ref:'Matthew 6:9–13', v:{
-kjv:`9 After this manner therefore pray ye: Our Father which art in heaven, Hallowed be thy name.
-10 Thy kingdom come. Thy will be done in earth, as it is in heaven.
-11 Give us this day our daily bread.
-12 And forgive us our debts, as we forgive our debtors.
-13 And lead us not into temptation, but deliver us from evil: For thine is the kingdom, and the power, and the glory, for ever. Amen.`,
-web:`9 Pray like this: 'Our Father in heaven, may your name be kept holy.
-10 Let your Kingdom come. Let your will be done on earth as it is in heaven.
-11 Give us today our daily bread.
-12 Forgive us our debts, as we also forgive our debtors.
-13 Bring us not into temptation, but deliver us from the evil one. For yours is the Kingdom, the power, and the glory forever. Amen.'`,
-asv:`9 After this manner therefore pray ye: Our Father who art in heaven, Hallowed be thy name.
-10 Thy kingdom come; Thy will be done, as in heaven, so on earth.
-11 Give us this day our daily bread.
-12 And forgive us our debts, as we also have forgiven our debtors.
-13 And bring us not into temptation, but deliver us from the evil one. For thine is the kingdom, and the power, and the glory for ever. Amen.`,
-ylt:`9 thus therefore pray ye: 'Our Father who art in the heavens! hallowed be Thy name.
-10 'Thy reign come: Thy will come to pass, as in heaven also on the earth.
-11 'Our appointed bread give us to-day.
-12 'And forgive us our debts, as also we forgive our debtors.
-13 'And mayest Thou not lead us to temptation, but deliver us from the evil, because Thine is the reign, and the power, and the glory -- to the ages. Amen.`,
-bbe:`9 Let this then be your prayer: Our Father in heaven, may your name be kept holy.
-10 Let your kingdom come. Let your pleasure be done, as in heaven, so on earth.
-11 Give us this day bread for our needs.
-12 And make us free of our debts, as we have made those free who are in debt to us.
-13 And let us not be put to the test, but keep us safe from the Evil One. For yours is the kingdom, the power, and the glory for ever. Amen.`}},
-{id:'lm322', ref:'Lamentations 3:22–26', v:{
-kjv:`22 It is of the LORD's mercies that we are not consumed, because his compassions fail not.
-23 They are new every morning: great is thy faithfulness.
-24 The LORD is my portion, saith my soul; therefore will I hope in him.
-25 The LORD is good unto them that wait for him, to the soul that seeketh him.
-26 It is good that a man should both hope and quietly wait for the salvation of the LORD.`,
-web:`22 It is because of Yahweh's loving kindnesses that we are not consumed, because his compassion doesn't fail.
-23 They are new every morning. Great is your faithfulness.
-24 "Yahweh is my portion," says my soul. "Therefore I will hope in him."
-25 Yahweh is good to those who wait for him, to the soul who seeks him.
-26 It is good that a man should hope and quietly wait for the salvation of Yahweh.`,
-asv:`22 It is of Jehovah's lovingkindnesses that we are not consumed, because his compassions fail not.
-23 They are new every morning; great is thy faithfulness.
-24 Jehovah is my portion, saith my soul; therefore will I hope in him.
-25 Jehovah is good unto them that wait for him, to the soul that seeketh him.
-26 It is good that a man should hope and quietly wait for the salvation of Jehovah.`,
-ylt:`22 The kindnesses of Jehovah! For we have not been consumed, For not ended have His mercies.
-23 New every morning, abundant is thy faithfulness.
-24 My portion is Jehovah, hath my soul said, Therefore I hope for Him.
-25 Good is Jehovah to those waiting for Him, To the soul that seeketh Him.
-26 Good! when one doth stay and stand still For the salvation of Jehovah.`,
-bbe:`22 It is through the Lord's love that we have not come to destruction, because his mercies have no limit.
-23 They are new every morning; great is your good faith.
-24 I said to myself, The Lord is my heritage; and because of this I will have hope in him.
-25 The Lord is good to those who are waiting for him, to the soul which is looking for him.
-26 It is good to go on hoping and quietly waiting for the salvation of the Lord.`}},
-{id:'jos18', ref:'Joshua 1:8–9', v:{
-kjv:`8 This book of the law shall not depart out of thy mouth; but thou shalt meditate therein day and night, that thou mayest observe to do according to all that is written therein: for then thou shalt make thy way prosperous, and then thou shalt have good success.
-9 Have not I commanded thee? Be strong and of a good courage; be not afraid, neither be thou dismayed: for the LORD thy God is with thee whithersoever thou goest.`,
-web:`8 This book of the law shall not depart from your mouth, but you shall meditate on it day and night, that you may observe to do according to all that is written in it; for then you shall make your way prosperous, and then you shall have good success.
-9 Haven't I commanded you? Be strong and courageous. Don't be afraid. Don't be dismayed, for Yahweh your God is with you wherever you go.`,
-asv:`8 This book of the law shall not depart out of thy mouth, but thou shalt meditate thereon day and night, that thou mayest observe to do according to all that is written therein: for then thou shalt make thy way prosperous, and then thou shalt have good success.
-9 Have not I commanded thee? Be strong and of good courage; be not affrighted, neither be thou dismayed: for Jehovah thy God is with thee whithersoever thou goest.`,
-ylt:`8 the book of this law doth not depart out of thy mouth, and thou hast meditated in it by day and by night, so that thou dost observe to do according to all that is written in it, for then thou dost cause thy way to prosper, and then thou dost act wisely.
-9 'Have not I commanded thee? be strong and courageous; be not terrified nor affrighted, for with thee is Jehovah thy God in every place whither thou goest.'`,
-bbe:`8 Let this book of the law be ever on your lips and in your thoughts day and night, so that you may keep with care everything in it; then a blessing will be on your way, and you will do well.
-9 Have I not given you your orders? Take heart and be strong; have no fear and do not be troubled; for the Lord your God is with you wherever you go.`}}
-];
 
 /* ================= APP STATE ================= */
 let session = null, profile = null;
-let curPassage = 'ps23', curVersion = 'kjv', readerSize = 1;
+let curVersion = 'kjv', readerSize = 1;
 let stepIdx = 0, needsCache = [], curCat = 'all';
 
 /* ============ 30-DAY DEVOTION ROTATION (embedded fallback) ============
@@ -1322,7 +997,7 @@ const BOLLS_TR={kjv:'KJV',web:'WEB',asv:'ASV',ylt:'YLT'};
 const BBE_IDS=['GEN','EXO','LEV','NUM','DEU','JOS','JDG','RUT','1SA','2SA','1KI','2KI','1CH','2CH','EZR','NEH','EST','JOB','PSA','PRO','ECC','SNG','ISA','JER','LAM','EZK','DAN','HOS','JOL','AMO','OBA','JON','MIC','NAM','HAB','ZEP','HAG','ZEC','MAL','MAT','MRK','LUK','JHN','ACT','ROM','1CO','2CO','GAL','EPH','PHP','COL','1TH','2TH','1TI','2TI','TIT','PHM','HEB','JAS','1PE','2PE','1JN','2JN','3JN','JUD','REV'];
 const BOOKS=[['Genesis',50],['Exodus',40],['Leviticus',27],['Numbers',36],['Deuteronomy',34],['Joshua',24],['Judges',21],['Ruth',4],['1 Samuel',31],['2 Samuel',24],['1 Kings',22],['2 Kings',25],['1 Chronicles',29],['2 Chronicles',36],['Ezra',10],['Nehemiah',13],['Esther',16],['Job',42],['Psalms',150],['Proverbs',31],['Ecclesiastes',12],['Song of Solomon',8],['Isaiah',66],['Jeremiah',52],['Lamentations',5],['Ezekiel',48],['Daniel',12],['Hosea',14],['Joel',3],['Amos',9],['Obadiah',1],['Jonah',4],['Micah',7],['Nahum',3],['Habakkuk',3],['Zephaniah',3],['Haggai',2],['Zechariah',14],['Malachi',4],['Matthew',28],['Mark',16],['Luke',24],['John',21],['Acts',28],['Romans',16],['1 Corinthians',16],['2 Corinthians',13],['Galatians',6],['Ephesians',6],['Philippians',4],['Colossians',4],['1 Thessalonians',5],['2 Thessalonians',3],['1 Timothy',6],['2 Timothy',4],['Titus',3],['Philemon',1],['Hebrews',13],['James',5],['1 Peter',5],['2 Peter',3],['1 John',5],['2 John',1],['3 John',1],['Jude',1],['Revelation',22]]
   .map(function(b,i){ return {id:i+1, name:b[0], chapters:b[1], test:i<39?'ot':'nt'}; });
-let bibleMode='featured', curTest='ot', curBook=19, curChapter=23, bibleSeq=0;
+let curTest='ot', curBook=19, curChapter=23, bibleSeq=0;
 const chapterCache={};
 function stripTags(s){ return String(s==null?'':s).replace(/<S>\d+<\/S>/gi,'').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim(); }
 async function fetchChapter(tr,book,ch){
@@ -1352,7 +1027,7 @@ function renderVersionBar(){
     '<button class="btn btn-sm'+(k===curVersion?' on':'')+'" data-ver="'+k+'">'+VERSIONS[k]+'</button>').join('');
   $('versionBar').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
     curVersion=b.dataset.ver; renderVersionBar();
-    if(bibleMode==='browse') loadChapter(curBook,curChapter); else renderPassage();
+    loadChapter(curBook,curChapter);
   }));
 }
 function renderTestamentBar(){
@@ -1362,23 +1037,25 @@ function renderTestamentBar(){
   });
 }
 function renderBookList(){
-  $('bookList').innerHTML=BOOKS.filter(b=>b.test===curTest).map(b=>
-    '<button class="btn'+(bibleMode==='browse'&&b.id===curBook?' on':'')+'" data-book="'+b.id+'">'+esc(b.name)+'</button>').join('');
-  $('bookList').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
-    pickBook(parseInt(b.dataset.book,10));
-  }));
+  var html='';
+  BOOKS.filter(function(b){ return b.test===curTest; }).forEach(function(b){
+    html+='<button class="btn'+(b.id===curBook?' on':'')+'" data-book="'+b.id+'">'+esc(b.name)+'</button>';
+    if(b.id===curBook) html+='<div class="chappanel" id="chapterPanel"><div class="chap-title">'+esc(b.name)+' — choose a chapter</div><div class="chapgrid" id="chapterList"></div></div>';
+  });
+  $('bookList').innerHTML=html;
+  $('bookList').querySelectorAll('button[data-book]').forEach(function(b){
+    b.addEventListener('click',function(){ pickBook(parseInt(b.dataset.book,10)); });
+  });
 }
 function pickBook(id){
   curBook=id; curTest=id<=39?'ot':'nt';
   renderTestamentBar(); renderBookList();
-  const bk=BOOKS[id-1];
-  $('chapPickLabel').textContent=bk.name+' — choose a chapter';
-  $('chapterWrap').style.display='';
-  const list=$('chapterList'); list.innerHTML='';
+  var bk=BOOKS[id-1];
+  var list=$('chapterList'); list.innerHTML='';
   for(let c=1;c<=bk.chapters;c++){
     (function(c){
-      const btn=document.createElement('button');
-      btn.className='btn btn-sm'+(bibleMode==='browse'&&curChapter===c?' on':'');
+      var btn=document.createElement('button');
+      btn.className='btn btn-sm'+(curChapter===c?' on':'');
       btn.textContent=c;
       btn.addEventListener('click',function(){ loadChapter(id,c); });
       list.appendChild(btn);
@@ -1386,14 +1063,15 @@ function pickBook(id){
   }
 }
 function markChapterBtn(ch){
-  $('chapterList').querySelectorAll('button').forEach(function(b,idx){
+  var list=$('chapterList');
+  if(list) list.querySelectorAll('button').forEach(function(b,idx){
     b.classList.toggle('on', idx+1===ch);
   });
 }
 function goChapter(book,ch){ pickBook(book); loadChapter(book,ch); }
 async function loadChapter(book,ch){
   if(typeof ttsStop==='function') ttsStop();
-  bibleMode='browse'; curBook=book; curChapter=ch;
+  curBook=book; curChapter=ch;
   const mySeq=++bibleSeq;
   renderBookList(); markChapterBtn(ch);
   const bk=BOOKS[book-1];
@@ -1441,33 +1119,6 @@ function renderChapterVerses(book,ch,verses){
     b.addEventListener('click',function(){ goChapter(parseInt(b.dataset.gob,10),parseInt(b.dataset.goc,10)); });
   });
   const bpFp=$('bpFootPray'); if(bpFp) bpFp.addEventListener('click',function(){ showView('guided'); });
-  applyReaderSize();
-}
-function renderPassageList(){
-  $('passageList').innerHTML=PASSAGES.map(p=>
-    '<button class="btn'+(bibleMode==='featured'&&p.id===curPassage?' on':'')+'" data-pid="'+p.id+'">'+esc(p.ref)+'</button>').join('');
-  $('passageList').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
-    curPassage=b.dataset.pid; bibleMode='featured';
-    renderPassageList(); renderBookList(); renderPassage();
-  }));
-}
-function renderPassageText(text){
-  return text.split('\n').map(line=>{
-    const m=line.match(/^(\d+)\s+(.*)$/);
-    if(m) return '<p><span class="vnum">'+m[1]+'</span>'+esc(m[2])+'</p>';
-    return '<p>'+esc(line)+'</p>';
-  }).join('');
-}
-function renderPassage(){
-  bibleMode='featured';
-  const p=PASSAGES.find(x=>x.id===curPassage);
-  $('bibleRef').textContent=p.ref+' · '+VERSIONS[curVersion];
-  $('bibleText').innerHTML=renderPassageText(p.v[curVersion]);
-  ttsBibleRef=p.ref+' · '+VERSIONS[curVersion];
-  ttsBibleVerses=String(p.v[curVersion]).split('\n').map(function(line){
-    const m=line.match(/^(\d+)\s+(.*)$/);
-    return m?{v:m[1],t:m[2]}:{v:0,t:line};
-  });
   applyReaderSize();
 }
 
@@ -2608,7 +2259,7 @@ function ptTick(){ renderPtBanner(); checkPtAlert(); }
 
 /* ================= INIT ================= */
 (async function init(){
-  renderVersionBar(); renderTestamentBar(); renderBookList(); renderPassageList(); renderPassage(); applyReaderSize(); startGuided();
+  renderVersionBar(); renderTestamentBar(); renderBookList(); pickBook(curBook); loadChapter(curBook,curChapter); applyReaderSize(); startGuided();
   try{
     const {data}=await sb.auth.getSession();
     session=data.session||null;
