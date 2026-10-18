@@ -1067,7 +1067,7 @@ function pickBook(id,focus){
   if(focus){
     $('bookList').style.display='none'; $('testamentBar').style.display='none';
     $('bookFocus').style.display='';
-    if($('bookFocus').scrollIntoView) $('bookFocus').scrollIntoView({behavior:'smooth',block:'start'});
+    loadChapter(id,1,true);
   }
 }
 function showAllBooks(){
