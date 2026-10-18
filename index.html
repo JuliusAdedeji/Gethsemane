@@ -98,8 +98,6 @@ h2{font-family:var(--serif);font-size:1.3rem;color:var(--gold-soft);margin:18px 
 #bibleText p{margin-bottom:.9em}
 .chapgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:6px;margin:10px 0}
 .chapgrid .btn{padding:9px 2px;font-size:.85rem;text-align:center}
-.chappanel{grid-column:1/-1;background:var(--card2);border:1px solid var(--gold);border-radius:12px;padding:10px;margin:2px 0}
-.chappanel .chap-title{font-weight:700;margin:2px 2px 8px}
 .chapnav{display:flex;justify-content:space-between;gap:8px;margin:4px 0 14px}
 /* ---------- lists / forms ---------- */
 .req{border-left:3px solid var(--gold)}
@@ -331,6 +329,11 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
     <button class="btn btn-sm" data-t="nt">New Testament</button>
   </div>
   <div class="passage-grid" id="bookList"></div>
+  <div id="bookFocus" style="display:none">
+    <button class="btn btn-sm" id="bookBackBtn">← All books</button>
+    <div id="bookFocusTitle" style="font-weight:700;margin:8px 0"></div>
+    <div class="chapgrid" id="chapterList"></div>
+  </div>
   <div class="card">
     <div class="dev-ref" id="bibleRef"></div>
     <div style="margin:6px 0"><button class="btn btn-sm tts-btn" data-tts="bible" data-label="🔊 Listen">🔊 Listen</button></div>
@@ -1037,30 +1040,39 @@ function renderTestamentBar(){
   });
 }
 function renderBookList(){
-  var html='';
-  BOOKS.filter(function(b){ return b.test===curTest; }).forEach(function(b){
-    html+='<button class="btn'+(b.id===curBook?' on':'')+'" data-book="'+b.id+'">'+esc(b.name)+'</button>';
-    if(b.id===curBook) html+='<div class="chappanel" id="chapterPanel"><div class="chap-title">'+esc(b.name)+' — choose a chapter</div><div class="chapgrid" id="chapterList"></div></div>';
-  });
-  $('bookList').innerHTML=html;
+  $('bookList').innerHTML=BOOKS.filter(function(b){ return b.test===curTest; }).map(function(b){
+    return '<button class="btn'+(b.id===curBook?' on':'')+'" data-book="'+b.id+'">'+esc(b.name)+'</button>';
+  }).join('');
   $('bookList').querySelectorAll('button[data-book]').forEach(function(b){
-    b.addEventListener('click',function(){ pickBook(parseInt(b.dataset.book,10)); });
+    b.addEventListener('click',function(){ pickBook(parseInt(b.dataset.book,10),true); });
   });
 }
-function pickBook(id){
-  curBook=id; curTest=id<=39?'ot':'nt';
-  renderTestamentBar(); renderBookList();
+function fillChapters(id){
   var bk=BOOKS[id-1];
+  $('bookFocusTitle').textContent=bk.name+' — choose a chapter';
   var list=$('chapterList'); list.innerHTML='';
   for(let c=1;c<=bk.chapters;c++){
     (function(c){
       var btn=document.createElement('button');
       btn.className='btn btn-sm'+(curChapter===c?' on':'');
       btn.textContent=c;
-      btn.addEventListener('click',function(){ loadChapter(id,c); });
+      btn.addEventListener('click',function(){ loadChapter(id,c,true); });
       list.appendChild(btn);
     })(c);
   }
+}
+function pickBook(id,focus){
+  curBook=id; curTest=id<=39?'ot':'nt';
+  renderTestamentBar(); renderBookList(); fillChapters(id);
+  if(focus){
+    $('bookList').style.display='none'; $('testamentBar').style.display='none';
+    $('bookFocus').style.display='';
+    if($('bookFocus').scrollIntoView) $('bookFocus').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+}
+function showAllBooks(){
+  $('bookFocus').style.display='none';
+  $('bookList').style.display=''; $('testamentBar').style.display='';
 }
 function markChapterBtn(ch){
   var list=$('chapterList');
@@ -1068,8 +1080,12 @@ function markChapterBtn(ch){
     b.classList.toggle('on', idx+1===ch);
   });
 }
-function goChapter(book,ch){ pickBook(book); loadChapter(book,ch); }
-async function loadChapter(book,ch){
+function scrollBibleReader(){
+  var el=$('bibleRef');
+  if(el&&el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function goChapter(book,ch){ pickBook(book); loadChapter(book,ch,true); }
+async function loadChapter(book,ch,scroll){
   if(typeof ttsStop==='function') ttsStop();
   curBook=book; curChapter=ch;
   const mySeq=++bibleSeq;
@@ -1081,6 +1097,7 @@ async function loadChapter(book,ch){
     const verses=await fetchChapter(curVersion,book,ch);
     if(mySeq!==bibleSeq) return;
     renderChapterVerses(book,ch,verses);
+    if(scroll) scrollBibleReader();
   }catch(e){
     if(mySeq!==bibleSeq) return;
     $('bibleText').innerHTML='<div class="empty">Couldn\'t reach the Bible library — check your connection and try again.<br><button class="btn btn-sm" id="bibleRetry" style="margin-top:10px">Try again</button></div>';
@@ -2259,7 +2276,8 @@ function ptTick(){ renderPtBanner(); checkPtAlert(); }
 
 /* ================= INIT ================= */
 (async function init(){
-  renderVersionBar(); renderTestamentBar(); renderBookList(); pickBook(curBook); loadChapter(curBook,curChapter); applyReaderSize(); startGuided();
+  renderVersionBar(); renderTestamentBar(); renderBookList(); fillChapters(curBook); loadChapter(curBook,curChapter); applyReaderSize(); startGuided();
+  $('bookBackBtn').addEventListener('click',showAllBooks);
   try{
     const {data}=await sb.auth.getSession();
     session=data.session||null;
