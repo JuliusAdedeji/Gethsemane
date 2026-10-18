@@ -121,6 +121,7 @@ label.flabel{display:block;font-size:.85rem;color:var(--muted);margin-top:8px}
 .catchips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
 .catchips .btn.on{background:var(--gold);color:#1a1206;border-color:var(--gold);font-weight:700}
 .catbadge{display:inline-block;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;
+.countbadge{display:inline-block;min-width:1.4em;text-align:center;font-size:.72rem;font-weight:700;background:var(--gold);color:#1a1408;border-radius:999px;padding:1px 6px;margin-left:6px}
   background:rgba(212,169,78,.16);color:var(--gold-soft);border-radius:999px;
   padding:3px 10px;margin-bottom:8px}
 .helpform{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px;display:none}
@@ -421,6 +422,16 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
       <button class="btn" id="signOutBtn">Sign out</button>
     </div>
   </div>
+  <div class="card">
+    <h2 style="margin-top:0">💬 Share feedback</h2>
+    <p class="sub">Spotted a problem, or have an idea? Tell me directly — only I see this.</p>
+    <label class="flabel" for="fbBody">Your message</label>
+    <textarea id="fbBody" maxlength="2000" placeholder="What should I know?"></textarea>
+    <label class="flabel" for="fbName">Your name (optional)</label>
+    <input type="text" id="fbName" maxlength="80" placeholder="Anonymous">
+    <div class="form-err" id="fbErr" role="alert"></div>
+    <div class="adminrow"><button class="btn btn-gold" id="fbSendBtn">Send feedback</button></div>
+  </div>
 </section>
 
 <!-- ============ ADMIN REVIEW ============ -->
@@ -432,6 +443,8 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
   <div id="adminPrayers"><div class="loading">Loading…</div></div>
   <h2>Testimonies awaiting review</h2>
   <div id="adminTestimonies"><div class="loading">Loading…</div></div>
+  <h2>Feedback awaiting review</h2>
+  <div id="adminFeedback"><div class="loading">Loading…</div></div>
 
   <div id="publishSection">
     <h2>Publish a devotion</h2>
@@ -938,6 +951,8 @@ document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>show
 document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.goto)));
 $('authBtn').addEventListener('click',()=>showView('auth'));
 $('adminBtn').addEventListener('click',()=>showView('admin'));
+$('fbSendBtn').addEventListener('click',sendFeedback);
+document.addEventListener('visibilitychange',function(){ if(!document.hidden) updateReviewBadge(); });
 
 /* ================= TEXT SIZE ================= */
 function applyReaderSize(){
@@ -1590,6 +1605,7 @@ async function loadProfile(){
     profile=data||null;
   }catch(e){ profile=null; }
   $('adminBtn').style.display=(profile&&profile.is_admin)?'':'none';
+  if(profile&&profile.is_admin) updateReviewBadge();
   syncPtFromProfile();
   renderAuth();
 }
@@ -1606,6 +1622,8 @@ async function loadAdmin(){
   try{
     const pr=await sb.from('prayer_requests').select('id,body,created_at').eq('status','pending').order('created_at',{ascending:false});
     const tm=await sb.from('testimonies').select('id,body,created_at').eq('status','pending').order('created_at',{ascending:false});
+    let fb={data:[]};
+    try{ fb=await sb.from('feedback').select('id,body,name,created_at').eq('status','unread').order('created_at',{ascending:false}); }catch(e){}
     $('adminPrayers').innerHTML=(pr.data&&pr.data.length?pr.data.map(r=>
       '<div class="card pending"><div class="body">'+esc(r.body)+'</div><div class="meta"><span>'+fmtDate(r.created_at)+'</span></div>'+
       '<div class="adminrow"><button class="btn btn-sm btn-gold" data-ap="prayer_requests" data-id="'+r.id+'">Approve</button>'+
@@ -1616,8 +1634,15 @@ async function loadAdmin(){
       '<div class="adminrow"><button class="btn btn-sm btn-gold" data-ap="testimonies" data-id="'+t.id+'">Approve</button>'+
       '<button class="btn btn-sm" data-hd="testimonies" data-id="'+t.id+'">Hide</button></div></div>').join('')
       :'<div class="empty">Nothing waiting. 🎉</div>');
+    $('adminFeedback').innerHTML=(fb.data&&fb.data.length?fb.data.map(f=>
+      '<div class="card pending"><div class="body">'+esc(f.body)+'</div><div class="meta"><span>'+esc(f.name||'Anonymous')+' · '+fmtDate(f.created_at)+'</span></div>'+
+      '<div class="adminrow"><button class="btn btn-sm btn-gold" data-rd="feedback" data-id="'+f.id+'">Mark as read</button>'+
+      '<button class="btn btn-sm" data-hd="feedback" data-id="'+f.id+'">Hide</button></div></div>').join('')
+      :'<div class="empty">Nothing waiting. 🎉</div>');
     document.querySelectorAll('[data-ap]').forEach(b=>b.addEventListener('click',()=>moderate(b.dataset.ap,b.dataset.id,'approved')));
     document.querySelectorAll('[data-hd]').forEach(b=>b.addEventListener('click',()=>moderate(b.dataset.hd,b.dataset.id,'hidden')));
+    document.querySelectorAll('[data-rd]').forEach(b=>b.addEventListener('click',()=>moderate(b.dataset.rd,b.dataset.id,'read')));
+    updateReviewBadge();
     loadComposer();
     loadMediaAdmin();
   }catch(e){ toast('Could not load review queue'); }
@@ -1626,9 +1651,35 @@ async function moderate(table,id,status){
   try{
     const {error}=await sb.from(table).update({status:status}).eq('id',id);
     if(error) throw error;
-    toast(status==='approved'?'Approved ✅':'Hidden');
+    toast(status==='approved'?'Approved ✅':(status==='read'?'Marked as read ✅':'Hidden'));
     loadAdmin();
   }catch(e){ toast('Action failed — try again'); }
+}
+async function countPending(table,col,val){
+  try{ const r=await sb.from(table).select('id',{count:'exact',head:true}).eq(col,val); return r.count||0; }
+  catch(e){ return 0; }
+}
+async function updateReviewBadge(){
+  if(!(profile&&profile.is_admin)) return;
+  const n=await countPending('prayer_requests','status','pending')
+    + await countPending('testimonies','status','pending')
+    + await countPending('feedback','status','unread');
+  $('adminBtn').innerHTML=n>0?('Review <span class="countbadge">'+n+'</span>'):'Review';
+}
+function fbErr(m){ const e=$('fbErr'); e.textContent=m||''; e.style.display=m?'':'none'; }
+async function sendFeedback(){
+  const body=$('fbBody').value.trim(), name=$('fbName').value.trim();
+  if(!body){ fbErr('Please write your message first.'); return; }
+  fbErr('');
+  const btn=$('fbSendBtn'); btn.disabled=true;
+  try{
+    const row={body:body, name:name||null, user_id:(session&&session.user)?session.user.id:null};
+    const {error}=await sb.from('feedback').insert(row);
+    if(error) throw error;
+    $('fbBody').value=''; $('fbName').value='';
+    toast('Thank you — your feedback is on its way 🙏');
+  }catch(e){ fbErr('Could not send — please check your connection and try again.'); }
+  btn.disabled=false;
 }
 
 /* ================= DEVOTION COMPOSER ================= */
