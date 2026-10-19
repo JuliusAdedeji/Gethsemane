@@ -287,6 +287,10 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
 <section class="view" id="view-guided">
   <button class="btn btn-ghost btn-sm" data-goto="home">← Home</button>
   <h1>Guided Prayer</h1>
+  <div id="journeyHead" style="text-align:center;margin:2px 0 10px">
+    <div id="journeyTitle" style="font-weight:700"></div>
+    <div id="journeyVerse" class="pt-note" style="margin-top:3px;font-size:.82rem"></div>
+  </div>
   <div id="guidedBody">
     <div class="dots" id="stepDots"></div>
     <div class="card step-card">
@@ -879,41 +883,109 @@ function rotationDevotion(){
   return Object.assign({isFallback:true}, DEVOTION_ROTATION[(dayOfYear-1)%DEVOTION_ROTATION.length]);
 }
 
-const PRAYER_STEPS = [
-  {t:'Stillness', d:[
-    'Close your eyes. Breathe slowly. You are in the garden with Jesus. Let the noise of the day fall quiet. He is near.',
-    'Be still. You have come into the presence of your God. Lay down the hurry, lay down the noise. He is here, and He is listening.',
-    'Shall we pray? Draw a slow breath. The garden is quiet, and the Lord is near. Let every anxious thought settle at His feet.',
-    'Pause. This moment is holy ground. Breathe in His peace, breathe out the weight of the day. You are not alone — He is with you.'
-  ]},
-  {t:'Thanksgiving', d:[
-    'Name three gifts from God — great or small. Thank Him aloud or in your heart for each one. Gratitude opens the door of prayer.',
-    'Count three mercies He has shown you — seen or unseen. Speak your thanks, one by one. A thankful heart prays with power.',
-    'What has the Lord done for you? Name three things, great or small, and give Him thanks for each. Gratitude turns the key of heaven.',
-    'Before you ask, give thanks. Recall three blessings — a breath, a mercy, a victory — and thank Him aloud or in your heart.'
-  ]},
-  {t:'Intercession', d:[
-    'Bring the people and situations on your heart before Him now — by name, one by one. He hears every one.',
-    'Who needs prayer today? Lift them before the throne — family, friends, nations — naming each one. No need is too small for Him.',
-    'Stand in the gap now. Bring every burden, every name, every situation before Him, one by one. He who hears in secret will answer.',
-    'Intercede. Lay the people you love and the troubles you carry at His feet — each by name. Heaven leans in when we pray for others.'
-  ]},
-  {t:'Listening', d:[
-    'Be still for a few breaths. Prayer is not only speaking. Ask Him: "Lord, what would You say to me today?" — and listen.',
-    'Quiet your heart. Prayer is a conversation, not a monologue. Ask Him: "Lord, speak — Your servant is listening." Then wait on Him.',
-    'Rest in the silence a moment. The Shepherd speaks, and His sheep know His voice. Ask Him: "What would You say to me today?" — and listen.',
-    'Do not rush past this. Be still and know that He is God. Ask Him: "Lord, what is on Your heart for me?" — and listen with an open heart.'
-  ]},
-  {t:'Amen', d:[
-    'Seal it with a simple Amen. "Your will be done." Carry His peace into the rest of your day.',
-    'Close with a confident Amen. "Your will be done, on earth as it is in heaven." Go in His peace — the garden goes with you.',
-    'Say Amen — so be it. "Your will be done." Rise from this place of prayer carrying His presence into every hour ahead.',
-    'End with Amen, and mean it. "Your will be done." Walk into the rest of your day knowing heaven heard you.'
-  ]}
+const STEP_TITLES=['Stillness','Thanksgiving','Intercession','Listening','Amen'];
+const PRAYER_JOURNEYS=[
+{day:'Day 1 \u2014 The Thankful Heart',ref:'Psalm 103:1\u20132',verse:'Bless the LORD, O my soul: and all that is within me, bless his holy name. Bless the LORD, O my soul, and forget not all his benefits.',steps:[
+'Name three gifts God has placed in your life, and thank Him for each one by name. Let your gratitude rise like morning incense.',
+'Ask God to make you a giver, not only a receiver. Pray that your thankfulness overflows into kindness for someone today.',
+'Be still and listen. He may bring one forgotten blessing to your mind \u2014 receive it with a quiet smile.',
+'Seal it with Amen. Go through this day counting mercies instead of troubles.']},
+{day:'Day 2 \u2014 Our Family',ref:'Joshua 24:15',verse:'But as for me and my house, we will serve the LORD.',steps:[
+'Thank God for your family \u2014 for the roof over your heads and the love that binds you. Even the hard days are part of His weaving.',
+'Bring before Him each member of your household by name. Ask Him to guard their coming in and their going out.',
+'Be still and listen. Is there one person in your family who needs your forgiveness or your patience today? Hear what He says.',
+'Say Amen, and walk home today as a peacemaker.']},
+{day:'Day 3 \u2014 Our Children',ref:'Proverbs 22:6',verse:'Train up a child in the way he should go: and when he is old, he will not depart from it.',steps:[
+'Thank God for the children He has entrusted to you \u2014 your own, your relatives\u2019, the young ones in your church. They are arrows in His quiver.',
+'Pray for their hearts: that they will know God early and love Him deeply. Lift up their schools, their friendships, and their future.',
+'Be still and listen. God may lay one child\u2019s name on your heart \u2014 stay with that name a moment and let His love for them fill you.',
+'Seal it with Amen. Bless a child with your words today.']},
+{day:'Day 4 \u2014 The Church',ref:'Matthew 16:18',verse:'Upon this rock I will build my church; and the gates of hell shall not prevail against it.',steps:[
+'Thank God for His church \u2014 for pastors, for fellow believers, for every seat filled and every song sung. His house is built on a rock.',
+'Intercede for your congregation: for unity among the members, strength for the leaders, and fire in the worship. Pray for churches everywhere.',
+'Be still and listen. Ask the Lord what part He wants you to play in His house \u2014 then wait for His whisper.',
+'Amen \u2014 now serve His church with gladness this week.']},
+{day:'Day 5 \u2014 Our Nation and Leaders',ref:'1 Timothy 2:1\u20132',verse:'I exhort therefore, that, first of all, supplications, prayers, intercessions, and giving of thanks, be made for all men; for kings, and for all that are in authority.',steps:[
+'Thank God for your nation \u2014 for its land, its people, and the peace you enjoy. Gratitude is the first duty of a citizen of heaven.',
+'Pray for those in authority: presidents, governors, judges, and officers. Ask God to give them wisdom and turn their hearts toward justice.',
+'Be still and listen. The Lord may show you one way to be a blessing to your community this week \u2014 do not rush past it.',
+'Seal it with Amen, and be a quiet light in your nation today.']},
+{day:'Day 6 \u2014 The Sick and the Suffering',ref:'James 5:15',verse:'And the prayer of faith shall save the sick, and the Lord shall raise him up.',steps:[
+'Thank God that He is the healer \u2014 that no sickness is beyond His reach and no pain is hidden from His eyes.',
+'Bring the sick before Him by name: the ones in hospitals, the ones at home, the ones nobody visits. Ask Him to touch their bodies and comfort their hearts.',
+'Be still and listen. He may put one suffering person on your mind \u2014 pray for them now, and consider visiting or calling them later.',
+'Say Amen, and carry His compassion to someone hurting today.']},
+{day:'Day 7 \u2014 A Clean Heart',ref:'1 John 1:9',verse:'If we confess our sins, he is faithful and just to forgive us our sins, and to cleanse us from all unrighteousness.',steps:[
+'Thank God that His mercy is new every morning \u2014 that no failure is final with Him, and His arms are always open.',
+'Confess before Him honestly: the sharp word, the hidden habit, the neglected duty. Ask Him to wash you clean and make you new.',
+'Be still and listen. Let His Spirit gently show you one area to surrender \u2014 do not defend yourself, just receive His cleansing.',
+'Amen. Walk today in the lightness of a forgiven heart.']},
+{day:'Day 8 \u2014 Direction for the Road Ahead',ref:'Proverbs 3:5\u20136',verse:'Trust in the LORD with all thine heart; and lean not unto thine own understanding. In all thy ways acknowledge him, and he shall direct thy paths.',steps:[
+'Thank God that He does not leave you to wander \u2014 He promises to direct the paths of those who trust Him.',
+'Lay your decisions before Him: the choice about work, the move, the matter you have been turning over at night. Ask for clear direction.',
+'Be still and listen. His guidance often comes as a quiet settling in your spirit \u2014 wait until you sense which way the peace lies.',
+'Seal it with Amen, then take one step today in the direction of His peace.']},
+{day:'Day 9 \u2014 Daily Bread',ref:'Philippians 4:19',verse:'But my God shall supply all your need according to his riches in glory by Christ Jesus.',steps:[
+'Thank God for every provision \u2014 the job, the harvest, the unexpected gift, the meal on the table. He has never failed you yet.',
+'Pray for your work: for diligence in your hands, favour with your employers, and open doors where you need them. Remember those still searching for work.',
+'Be still and listen. Ask Him to show you where your daily labour can honour Him \u2014 even the smallest task done well is worship.',
+'Say Amen, and work today as unto the Lord.']},
+{day:'Day 10 \u2014 Standing Firm',ref:'Ephesians 6:11',verse:'Put on the whole armour of God, that ye may be able to stand against the wiles of the devil.',steps:[
+'Thank God that the battle is His \u2014 that in Christ you are not fighting for victory, but from victory.',
+'Put on the whole armour of God in prayer: truth, righteousness, the gospel of peace, faith, salvation, and His Word. Stand against every scheme of darkness over your home and family.',
+'Be still and listen. In the quiet, hear His assurance: no weapon formed against you shall prosper. Rest in His protection.',
+'Amen. Walk today as a soldier who knows the war is already won.']},
+{day:'Day 11 \u2014 The Harvest',ref:'Matthew 9:37\u201338',verse:'The harvest truly is plenteous, but the labourers are few; Pray ye therefore the Lord of the harvest, that he will send forth labourers into his harvest.',steps:[
+'Thank God that the gospel reached you \u2014 that someone carried the light across land or sea until it found your heart.',
+'Pray for the lost: your neighbour who does not yet believe, the distant village that has never heard, the missionaries in hard places. Ask the Lord of the harvest to send labourers.',
+'Be still and listen. He may give you one name \u2014 one person to pray for and to speak to. Do not argue; just receive the assignment.',
+'Seal it with Amen, and be ready to speak of Jesus today.']},
+{day:'Day 12 \u2014 Peace for the Anxious Heart',ref:'Philippians 4:6\u20137',verse:'Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let your requests be made known unto God.',steps:[
+'Thank God that His peace is stronger than your worry \u2014 that He holds tomorrow, so you do not have to.',
+'Pour out your anxieties before Him, one by one: the bill, the diagnosis, the unanswered question. Leave each one at His feet and do not pick them back up.',
+'Be still and listen. Breathe slowly and let His peace, which passes all understanding, settle over your heart like evening over the fields.',
+'Say Amen, and carry His calm into every room you enter today.']},
+{day:'Day 13 \u2014 The Lamp and the Light',ref:'Psalm 119:105',verse:'Thy word is a lamp unto my feet, and a light unto my path.',steps:[
+'Thank God for His Word \u2014 the lamp for your feet and the light for your path, given freely to guide you.',
+'Ask Him to open the Scriptures to you: to give you hunger for the Word, understanding as you read, and courage to obey what you learn.',
+'Be still and listen. Let one verse from your recent reading rise in your mind \u2014 turn it over slowly and let it speak.',
+'Amen \u2014 hide His Word in your heart today.']},
+{day:'Day 14 \u2014 Let Everything Praise',ref:'Psalm 150:6',verse:'Let every thing that hath breath praise the LORD. Praise ye the LORD.',steps:[
+'Praise Him simply for who He is \u2014 holy, faithful, merciful, and true. Worship needs no reason beyond His worthiness.',
+'Offer Him your praise as intercession: sing His greatness over your family, your church, your nation. Let worship go before you like an army\u2019s banner.',
+'Be still and listen. In the silence after praise, you may sense heaven\u2019s nearness \u2014 rest in it without words.',
+'Seal it with Amen \u2014 and let your whole day be a hallelujah.']}
 ];
+function journeyIdx(){ return prayerDayIdx()%PRAYER_JOURNEYS.length; }
 function prayerDayIdx(){
   const n=new Date(), start=new Date(n.getFullYear(),0,0);
   return Math.floor((n-start)/864e5);
+}
+/* Stillness wording follows the time of day — a 6 AM prayer should not talk about "the noise of the day". */
+const STILLNESS_SETS={
+  am:[
+    'Close your eyes. Breathe slowly. The day is still new, and you are in the garden with Jesus before it begins. He is near.',
+    'Be still. You have woken into the presence of your God. Lay the coming day at His feet before it starts. He is here, and He is listening.',
+    'Shall we pray? Draw a slow breath. The morning is quiet, and the Lord is near. Let every anxious thought about today settle at His feet.',
+    'Pause. This morning is holy ground. Breathe in His peace for the day ahead. You are not alone — He goes before you.'
+  ],
+  mid:[
+    'Close your eyes. Breathe slowly. You are in the garden with Jesus. Let the noise of the day fall quiet. He is near.',
+    'Be still. Step out of the hurry into the presence of your God. Lay down the noise. He is here, and He is listening.',
+    'Shall we pray? Draw a slow breath. The garden is quiet, and the Lord is near. Let every anxious thought settle at His feet.',
+    'Pause. This moment is holy ground. Breathe in His peace, breathe out the weight of the day so far. You are not alone — He is with you.'
+  ],
+  pm:[
+    'Close your eyes. Breathe slowly. The day is done, and you are in the garden with Jesus. Let its noise fall quiet. He is near.',
+    'Be still. You have come into the presence of your God at the close of day. Lay down the hurry, lay down every weight. He is here, and He is listening.',
+    'Shall we pray? Draw a slow breath. The evening is quiet, and the Lord is near. Let every anxious thought settle at His feet.',
+    'Pause. This moment is holy ground. Breathe in His peace, breathe out the weight of the day. Rest — you are not alone. He is with you.'
+  ]
+};
+function stillnessWords(){
+  const h=new Date().getHours();
+  const set=h<11?STILLNESS_SETS.am:(h<17?STILLNESS_SETS.mid:STILLNESS_SETS.pm);
+  return set[prayerDayIdx()%set.length];
 }
 
 /* ================= HELPERS ================= */
@@ -992,18 +1064,20 @@ function startGuided(){
   renderStep();
 }
 function renderStep(){
-  const s=PRAYER_STEPS[stepIdx];
-  const words=s.d[prayerDayIdx()%s.d.length];
-  $('stepTitle').textContent='Step '+(stepIdx+1)+' — '+s.t;
+  const j=PRAYER_JOURNEYS[journeyIdx()];
+  const words=stepIdx===0?stillnessWords():j.steps[stepIdx-1];
+  $('stepTitle').textContent='Step '+(stepIdx+1)+' — '+STEP_TITLES[stepIdx];
+  $('journeyTitle').textContent=j.day;
+  $('journeyVerse').textContent=j.ref+' · '+j.verse;
   $('stepText').textContent=words;
-  $('stepDots').innerHTML=PRAYER_STEPS.map((_,i)=>'<span class="dot'+(i===stepIdx?' on':'')+'"></span>').join('');
+  $('stepDots').innerHTML=STEP_TITLES.map((_,i)=>'<span class="dot'+(i===stepIdx?' on':'')+'"></span>').join('');
   $('stepBack').style.visibility=stepIdx===0?'hidden':'visible';
-  $('stepNext').textContent=stepIdx===PRAYER_STEPS.length-1?'Finish →':'Next →';
+  $('stepNext').textContent=stepIdx===STEP_TITLES.length-1?'Finish →':'Next →';
 }
 $('stepBack').addEventListener('click',()=>{ if(typeof ttsStop==='function') ttsStop(); if(stepIdx>0){stepIdx--;renderStep();} });
 $('stepNext').addEventListener('click',()=>{
   if(typeof ttsStop==='function') ttsStop();
-  if(stepIdx<PRAYER_STEPS.length-1){ stepIdx++; renderStep(); }
+  if(stepIdx<STEP_TITLES.length-1){ stepIdx++; renderStep(); }
   else{ $('guidedBody').style.display='none'; $('guidedEnd').style.display=''; }
 });
 $('beginAgain').addEventListener('click',()=>{ if(typeof ttsStop==='function') ttsStop(); startGuided(); });
