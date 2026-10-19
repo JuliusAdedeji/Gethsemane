@@ -70,6 +70,26 @@ h2{font-family:var(--serif);font-size:1.3rem;color:var(--gold-soft);margin:18px 
 .dev-focus{color:var(--moon);font-size:.95rem}
 .scripture{font-family:var(--serif);font-size:1.12rem;line-height:1.75;color:var(--moon)}
 .scripture .vnum{color:var(--gold);font-size:.8em;font-weight:700;margin-right:.35em}
+.bverse{border-radius:8px;padding:3px 7px;margin:1px -7px;cursor:pointer}
+.bverse.hl-gold{background:rgba(212,169,78,.30)}
+.bverse.hl-green{background:rgba(74,140,100,.34)}
+.bverse.hl-blue{background:rgba(110,150,210,.30)}
+.bverse.hl-rose{background:rgba(200,110,130,.30)}
+.hlrow{display:flex;gap:12px;align-items:center;padding:10px 2px}
+.hldot{width:32px;height:32px;border-radius:50%;border:2px solid rgba(255,255,255,.25);cursor:pointer;padding:0}
+.hldot.gold{background:rgba(212,169,78,.85)}
+.hldot.green{background:rgba(74,140,100,.85)}
+.hldot.blue{background:rgba(110,150,210,.85)}
+.hldot.rose{background:rgba(200,110,130,.85)}
+.hlclear{background:none;border:none;color:var(--ink-soft,#b9b3a5);font-size:1.1rem;cursor:pointer;padding:4px 8px}
+#hlList{display:grid;gap:8px;margin-top:8px}
+.hlitem{display:block;width:100%;text-align:left;border-radius:10px;padding:10px 12px;border:1px solid transparent;cursor:pointer;background:none;color:inherit;font:inherit}
+.hlitem b{display:block;margin-bottom:2px}
+.hlitem span{font-size:.85rem;opacity:.85}
+.hlitem.hl-gold{background:rgba(212,169,78,.16);border-color:rgba(212,169,78,.5)}
+.hlitem.hl-green{background:rgba(74,140,100,.16);border-color:rgba(74,140,100,.5)}
+.hlitem.hl-blue{background:rgba(110,150,210,.16);border-color:rgba(110,150,210,.5)}
+.hlitem.hl-rose{background:rgba(200,110,130,.16);border-color:rgba(200,110,130,.5)}
 .reflection{margin-top:14px;color:var(--ink)}
 .focus-box{margin-top:14px;background:var(--card2);border:1px dashed var(--gold);
   border-radius:12px;padding:12px 14px}
@@ -343,6 +363,10 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
     <div class="dev-ref" id="bibleRef"></div>
     <div style="margin:6px 0"><button class="btn btn-sm tts-btn" data-tts="bible" data-label="🔊 Listen">🔊 Listen</button></div>
     <div class="scripture reader-text" id="bibleText"></div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <div class="dev-ref">🌟 My Highlights</div>
+    <div id="hlList"><div class="loading">Loading…</div></div>
   </div>
 </section>
 
@@ -1018,6 +1042,7 @@ function showView(name){
   if(name==='love') loadNeeds();
   if(name==='listen') loadListen();
   if(name==='admin') loadAdmin();
+  if(name==='bible') renderHlList();
 }
 document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>showView(t.dataset.view)));
 document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.goto)));
@@ -1202,7 +1227,7 @@ function renderChapterVerses(book,ch,verses){
   const prevLabel=prev?('← '+BOOKS[prev[0]-1].name+' '+prev[1]):'';
   const nextLabel=next?(' '+BOOKS[next[0]-1].name+' '+next[1]+' →'):'';
   let html='<div class="chapnav">'+navBtn(prev,prevLabel||'← Prev')+navBtn(next,nextLabel||'Next →')+'</div>';
-  html+=verses.map(function(v){ return '<p><span class="vnum">'+v.v+'</span>'+esc(v.t)+'</p>'; }).join('');
+  html+=verses.map(function(v){ return '<p class="bverse" data-v="'+v.v+'"><span class="vnum">'+v.v+'</span>'+esc(v.t)+'</p>'; }).join('');
   html+='<div class="chapnav">'+navBtn(prev,'← Prev')+navBtn(next,'Next →')+'</div>';
   let bpFoot='';
   if(bpState){
@@ -1224,8 +1249,64 @@ function renderChapterVerses(book,ch,verses){
   $('bibleText').querySelectorAll('[data-gob]').forEach(function(b){
     b.addEventListener('click',function(){ goChapter(parseInt(b.dataset.gob,10),parseInt(b.dataset.goc,10)); });
   });
+  paintHL(book,ch);
+  $('bibleText').querySelectorAll('.bverse').forEach(function(p){
+    p.addEventListener('click',function(){
+      const v=p.dataset.v;
+      const verse=(ttsBibleVerses||[]).find(function(x){ return String(x.v)===String(v); });
+      openHlPicker(p,book,ch,v,verse?verse.t:'');
+    });
+  });
   const bpFp=$('bpFootPray'); if(bpFp) bpFp.addEventListener('click',function(){ showView('guided'); });
   applyReaderSize();
+}
+
+/* ================= VERSE HIGHLIGHTS ================= */
+const HL_COLORS=['gold','green','blue','rose'];
+function hlKey(ver,book,ch,v){ return ver+'|'+book+'|'+ch+'|'+v; }
+function getHL(){ try{ return JSON.parse(localStorage.getItem('geth_highlights')||'{}'); }catch(e){ return {}; } }
+function setHL(h){ try{ localStorage.setItem('geth_highlights',JSON.stringify(h)); }catch(e){} }
+function paintHL(book,ch){
+  const H=getHL();
+  document.querySelectorAll('#bibleText .bverse').forEach(function(p){
+    const k=hlKey(curVersion,book,ch,p.dataset.v);
+    p.classList.remove('hl-gold','hl-green','hl-blue','hl-rose');
+    if(H[k]) p.classList.add('hl-'+H[k].color);
+  });
+}
+function closeHlRow(){ const r=document.querySelector('#bibleText .hlrow'); if(r) r.remove(); }
+function openHlPicker(pEl,book,ch,v,text){
+  closeHlRow();
+  const row=document.createElement('div');
+  row.className='hlrow';
+  row.innerHTML=HL_COLORS.map(function(c){ return '<button class="hldot '+c+'" data-c="'+c+'" aria-label="Highlight '+c+'"></button>'; }).join('')+
+    '<button class="hlclear" aria-label="Remove highlight">✕</button>';
+  pEl.after(row);
+  row.querySelectorAll('.hldot').forEach(function(b){
+    b.addEventListener('click',function(ev){
+      ev.stopPropagation();
+      const H=getHL();
+      H[hlKey(curVersion,book,ch,v)]={color:b.dataset.c,ver:curVersion,book:book,ch:ch,v:v,ref:BOOKS[book-1].name+' '+ch+':'+v,text:text,ts:Date.now()};
+      setHL(H); paintHL(book,ch); closeHlRow(); renderHlList();
+      toast('Highlighted 🌟');
+    });
+  });
+  row.querySelector('.hlclear').addEventListener('click',function(ev){
+    ev.stopPropagation();
+    const H=getHL(); delete H[hlKey(curVersion,book,ch,v)];
+    setHL(H); paintHL(book,ch); closeHlRow(); renderHlList();
+  });
+}
+function renderHlList(){
+  const el=$('hlList'); if(!el) return;
+  const H=getHL();
+  const items=Object.keys(H).map(function(k){ return H[k]; }).sort(function(a,b){ return b.ts-a.ts; });
+  el.innerHTML=items.length?items.map(function(h){
+    return '<button class="hlitem hl-'+h.color+'" data-b="'+h.book+'" data-c="'+h.ch+'"><b>'+esc(h.ref)+'</b><span>'+esc(String(h.text||'').slice(0,90))+((h.text||'').length>90?'…':'')+'</span></button>';
+  }).join(''):'<div class="empty">No highlights yet — tap any verse while reading to mark it.</div>';
+  el.querySelectorAll('.hlitem').forEach(function(b){
+    b.addEventListener('click',function(){ goChapter(parseInt(b.dataset.b,10),parseInt(b.dataset.c,10)); });
+  });
 }
 
 /* ================= AUDIO (TTS) ================= */
