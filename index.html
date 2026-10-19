@@ -83,9 +83,11 @@ h2{font-family:var(--serif);font-size:1.3rem;color:var(--gold-soft);margin:18px 
 .hldot.rose{background:rgba(200,110,130,.85)}
 .hlclear{background:none;border:none;color:var(--ink-soft,#b9b3a5);font-size:1.1rem;cursor:pointer;padding:4px 8px}
 #hlList{display:grid;gap:8px;margin-top:8px}
-.hlitem{display:block;width:100%;text-align:left;border-radius:10px;padding:10px 12px;border:1px solid transparent;cursor:pointer;background:none;color:inherit;font:inherit}
+.hlitem{display:flex;align-items:center;gap:6px;width:100%;text-align:left;border-radius:10px;padding:6px 6px 6px 12px;border:1px solid transparent;color:inherit;font:inherit}
+.hlgo{flex:1;text-align:left;background:none;border:none;cursor:pointer;color:inherit;font:inherit;padding:4px 2px}
 .hlitem b{display:block;margin-bottom:2px}
 .hlitem span{font-size:.85rem;opacity:.85}
+.hlshare{background:none;border:none;font-size:1.25rem;cursor:pointer;padding:8px 10px}
 .hlitem.hl-gold{background:rgba(212,169,78,.16);border-color:rgba(212,169,78,.5)}
 .hlitem.hl-green{background:rgba(74,140,100,.16);border-color:rgba(74,140,100,.5)}
 .hlitem.hl-blue{background:rgba(110,150,210,.16);border-color:rgba(110,150,210,.5)}
@@ -686,6 +688,48 @@ var blob=await new Promise(function(r){ cv.toBlob(r,'image/png'); });
     var file=new File([blob],'gethsemane-verse.png',{type:'image/png'});
     if(navigator.canShare&&navigator.canShare({files:[file]})){
       await navigator.share({files:[file],title:'Gethsemane',text:'"'+devotion.verse_text+'" \u2014 '+devotion.verse_ref});
+    }else{
+      var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='gethsemane-verse.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){URL.revokeObjectURL(a.href);},8000);
+      toast('Verse card downloaded \u2014 share it anywhere 📤');
+    }
+  }catch(e){
+    if(e&&e.name==='AbortError') return;
+    toast('Could not create the verse card \u2014 please try again');
+  }
+}
+async function shareTextVerseCard(text,ref){
+  if(!text){ toast('Nothing to share yet'); return; }
+  try{
+    var src=$('heroImg').src;
+    var img=await new Promise(function(res,rej){ var i=new Image(); i.onload=function(){res(i);}; i.onerror=rej; i.src=src; });
+    var S=1080, cv=document.createElement('canvas'); cv.width=S; cv.height=S;
+    var g=cv.getContext('2d');
+    var scale=Math.max(S/img.width,S/img.height), dw=img.width*scale, dh=img.height*scale;
+    g.drawImage(img,(S-dw)/2,(S-dh)/2,dw,dh);
+    var gr=g.createLinearGradient(0,0,0,S);
+    gr.addColorStop(0,'rgba(4,9,6,0.55)'); gr.addColorStop(0.5,'rgba(4,9,6,0.25)'); gr.addColorStop(1,'rgba(4,9,6,0.88)');
+    g.fillStyle=gr; g.fillRect(0,0,S,S);
+    g.textAlign='center'; g.textBaseline='middle';
+    var fs=54, lines;
+    while(true){ g.font='italic '+fs+'px Georgia,serif'; lines=wrapCardText(g,'\u201C'+text+'\u201D',S-160);
+      if(lines.length<=6||fs<=30) break; fs-=4; }
+    if(lines.length>6) lines=lines.slice(0,6);
+    var lh=Math.round(fs*1.34), totalH=lines.length*lh+24+52;
+    var y=(S-totalH)/2-10, li;
+    g.fillStyle='#f7f1de';
+    for(li=0;li<lines.length;li++){ g.fillText(lines[li],S/2,y+lh/2); y+=lh; }
+    y+=24;
+    g.font='600 38px Georgia,serif'; g.fillStyle='#e8c86a';
+    g.fillText('\u2014 '+ref+' \u2014',S/2,y+26); y+=52;
+    g.font='28px Georgia,serif'; g.fillStyle='rgba(247,241,222,0.75)';
+    g.fillText('G E T H S E M A N E',S/2,S-72);
+    var blob=await new Promise(function(r){ cv.toBlob(r,'image/png'); });
+    if(!blob) throw new Error('render failed');
+    var file=new File([blob],'gethsemane-verse.png',{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:'Gethsemane',text:'"'+text+'" \u2014 '+ref});
     }else{
       var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='gethsemane-verse.png';
       document.body.appendChild(a); a.click(); a.remove();
@@ -1300,12 +1344,24 @@ function openHlPicker(pEl,book,ch,v,text){
 function renderHlList(){
   const el=$('hlList'); if(!el) return;
   const H=getHL();
-  const items=Object.keys(H).map(function(k){ return H[k]; }).sort(function(a,b){ return b.ts-a.ts; });
-  el.innerHTML=items.length?items.map(function(h){
-    return '<button class="hlitem hl-'+h.color+'" data-b="'+h.book+'" data-c="'+h.ch+'"><b>'+esc(h.ref)+'</b><span>'+esc(String(h.text||'').slice(0,90))+((h.text||'').length>90?'…':'')+'</span></button>';
+  const keys=Object.keys(H).sort(function(a,b){ return H[b].ts-H[a].ts; });
+  el.innerHTML=keys.length?keys.map(function(k){
+    const h=H[k];
+    const txt=String(h.text||''), snip=txt.slice(0,90)+(txt.length>90?'…':'');
+    return '<div class="hlitem hl-'+h.color+'">'+
+      '<button class="hlgo" data-b="'+h.book+'" data-c="'+h.ch+'"><b>'+esc(h.ref)+'</b><span>'+esc(snip)+'</span></button>'+
+      '<button class="hlshare" data-k="'+esc(k)+'" aria-label="Share this verse">📤</button>'+
+    '</div>';
   }).join(''):'<div class="empty">No highlights yet — tap any verse while reading to mark it.</div>';
-  el.querySelectorAll('.hlitem').forEach(function(b){
+  el.querySelectorAll('.hlgo').forEach(function(b){
     b.addEventListener('click',function(){ goChapter(parseInt(b.dataset.b,10),parseInt(b.dataset.c,10)); });
+  });
+  el.querySelectorAll('.hlshare').forEach(function(b){
+    b.addEventListener('click',function(ev){
+      ev.stopPropagation();
+      const h=getHL()[b.dataset.k];
+      if(h) shareTextVerseCard(h.text,h.ref);
+    });
   });
 }
 
