@@ -600,7 +600,7 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
     Listen</button>
 </nav>
 
-<div id="buildTag" style="text-align:center;font-size:.68rem;opacity:.45;padding:24px 0 92px">Gethsemane · build 2026-10-19c</div>
+<div id="buildTag" style="text-align:center;font-size:.68rem;opacity:.45;padding:24px 0 92px">Gethsemane · build 2026-10-20a</div>
 
 <div id="toast" role="status"></div>
 
@@ -1371,18 +1371,32 @@ function renderHlList(){
 let ttsQueue=[], ttsIdx=0, ttsPlaying=false, ttsKind=null;
 let ttsVoice=null, ttsVoicesHooked=false;
 let ttsBibleVerses=null, ttsBibleRef='';
+let tmCache=[], ttsTestimonyText='', ttsActiveIdx=-1;
 function nativeTts(){ try{ return isNativeApp() && !!(window.Capacitor.Plugins && window.Capacitor.Plugins.TextToSpeech); }catch(e){ return false; } }
 function ttsSupported(){ return nativeTts() || ('speechSynthesis' in window); }
 function pickTtsVoice(){
   try{
     const vs=speechSynthesis.getVoices().filter(function(v){ return v.lang&&v.lang.toLowerCase().indexOf('en')===0; });
     if(!vs.length) return null;
-    const prefer=[/samantha/i,/google us english/i,/zira/i,/aria/i,/jenny/i,/alex/i,/daniel/i,/karen/i,/moira/i,/susan/i,/fiona/i];
-    for(let i=0;i<prefer.length;i++){
-      const m=vs.find(function(v){ return prefer[i].test(v.name); });
-      if(m) return m;
+    function score(v){
+      const n=(v.name||'').toLowerCase(); let s=0;
+      if(n.indexOf('premium')>=0) s+=60;
+      if(n.indexOf('enhanced')>=0) s+=50;
+      if(n.indexOf('ava')>=0) s+=34;
+      if(n.indexOf('zoe')>=0) s+=32;
+      if(n.indexOf('samantha')>=0) s+=30;
+      if(n.indexOf('allison')>=0) s+=28;
+      if(n.indexOf('nicky')>=0) s+=24;
+      if(n.indexOf('google us english')>=0) s+=22;
+      if(n.indexOf('aria')>=0) s+=20;
+      if(n.indexOf('jenny')>=0) s+=18;
+      if(n.indexOf('zira')>=0) s+=14;
+      if(n.indexOf('susan')>=0) s+=12;
+      if(/en[-_]us/i.test(v.lang)) s+=6;
+      if(v.localService) s+=2;
+      return s;
     }
-    return vs.find(function(v){ return /en[-_]us/i.test(v.lang); })||vs[0];
+    return vs.slice().sort(function(a,b){ return score(b)-score(a); })[0];
   }catch(e){ return null; }
 }
 function hookTtsVoices(){
@@ -1394,7 +1408,8 @@ function hookTtsVoices(){
 }
 function ttsRenderBtns(){
   document.querySelectorAll('.tts-btn').forEach(function(b){
-    const active=ttsPlaying&&b.dataset.tts===ttsKind;
+    let active=ttsPlaying&&b.dataset.tts===ttsKind;
+    if(active&&b.dataset.tts==='testimony') active=String(ttsActiveIdx)===String(b.dataset.tidx);
     b.textContent=active?'⏹ Stop':(b.dataset.label||'🔊 Listen');
   });
 }
@@ -1411,6 +1426,7 @@ function ttsTextFor(kind){
   }
   else if(kind==='devotion'){ s=[txt('devVerseRef'),txt('devVerseText'),txt('devReflection'),'Prayer focus. '+txt('devFocus')].join('. '); }
   else if(kind==='step'){ s=txt('stepTitle')+'. '+txt('stepText'); }
+  else if(kind==='testimony'){ s=ttsTestimonyText; }
   return s.replace(/\s+/g,' ').trim();
 }
 function ttsStop(){
@@ -1422,7 +1438,7 @@ async function ttsNextNative(){
   if(!ttsPlaying||ttsIdx>=ttsQueue.length){ ttsPlaying=false; ttsKind=null; ttsRenderBtns(); return; }
   const chunk=ttsQueue[ttsIdx++];
   try{
-    await window.Capacitor.Plugins.TextToSpeech.speak({text:chunk, lang:'en-US', rate:0.85, pitch:0.95, volume:1.0, category:'ambient'});
+    await window.Capacitor.Plugins.TextToSpeech.speak({text:chunk, lang:'en-US', rate:0.95, pitch:0.95, volume:1.0, category:'ambient'});
   }catch(e){ if(ttsPlaying){ ttsPlaying=false; ttsKind=null; ttsRenderBtns(); } return; }
   if(ttsPlaying) ttsNextNative();
 }
@@ -1432,7 +1448,7 @@ function ttsNext(){
   const u=new SpeechSynthesisUtterance(ttsQueue[ttsIdx++]);
   if(!ttsVoice) ttsVoice=pickTtsVoice();
   if(ttsVoice) u.voice=ttsVoice;
-  u.rate=0.85; u.pitch=0.95;
+  u.rate=0.95; u.pitch=0.95;
   u.onend=function(){ if(ttsPlaying) ttsNext(); };
   u.onerror=function(){ ttsPlaying=false; ttsKind=null; ttsRenderBtns(); };
   try{ speechSynthesis.speak(u); }catch(e){ ttsPlaying=false; ttsKind=null; ttsRenderBtns(); }
@@ -1471,7 +1487,14 @@ function bindTts(){
   hookTtsVoices();
   document.querySelectorAll('.tts-btn').forEach(function(b){
     if(b.dataset.ttsBound) return; b.dataset.ttsBound='1';
-    b.addEventListener('click',function(){ ttsToggle(b.dataset.tts); });
+    b.addEventListener('click',function(){
+      if(b.dataset.tts==='testimony'){
+        const t=tmCache[parseInt(b.dataset.tidx||'0',10)];
+        ttsTestimonyText=t?('A testimony. '+t.body):'';
+        ttsActiveIdx=parseInt(b.dataset.tidx||'0',10);
+      }
+      ttsToggle(b.dataset.tts);
+    });
   });
 }
 
@@ -1649,11 +1672,14 @@ async function loadTestimonies(){
       .eq('status','approved').order('created_at',{ascending:false}).limit(60);
     if(error) throw error;
     if(!data||!data.length){ box.innerHTML='<div class="empty">No testimonies yet — be the first to tell what the Lord has done. ✨</div>'; return; }
-    box.innerHTML=data.map(t=>{
+    tmCache=data;
+    box.innerHTML=data.map((t,i)=>{
       const who=t.is_anonymous?'Anonymous':esc((t.profiles&&t.profiles.display_name)||'A friend');
       return '<div class="card req"><div class="body">“'+esc(t.body)+'”</div>'+
-        '<div class="meta"><span>— '+who+' · '+fmtDate(t.created_at)+'</span></div></div>';
+        '<div class="meta"><span>— '+who+' · '+fmtDate(t.created_at)+'</span></div>'+
+        '<div style="margin-top:8px"><button class="btn btn-sm tts-btn" data-tts="testimony" data-tidx="'+i+'" data-label="🔊 Listen">🔊 Listen</button></div></div>';
     }).join('');
+    bindTts();
   }catch(e){ box.innerHTML='<div class="empty">Could not load testimonies. Check your connection and try again.</div>'; }
 }
 $('tmForm').addEventListener('submit', async e=>{
