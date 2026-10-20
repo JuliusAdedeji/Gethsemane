@@ -326,6 +326,7 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
       <div class="step-nav">
         <button class="btn" id="stepBack">← Back</button>
         <button class="btn btn-sm tts-btn" id="stepListen" data-tts="step" data-label="🔊 Listen">🔊 Listen</button>
+        <audio id="stepAudio" preload="none" style="display:none"></audio>
         <button class="btn btn-gold" id="stepNext">Next →</button>
       </div>
     </div>
@@ -605,7 +606,7 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
     Listen</button>
 </nav>
 
-<div id="buildTag" style="text-align:center;font-size:.68rem;opacity:.45;padding:24px 0 92px">Gethsemane · build 2026-10-20d</div>
+<div id="buildTag" style="text-align:center;font-size:.68rem;opacity:.45;padding:24px 0 92px">Gethsemane · build 2026-10-20e</div>
 
 <div id="toast" role="status"></div>
 
@@ -1387,6 +1388,7 @@ function renderHlList(){
 
 /* ================= AUDIO (TTS) ================= */
 let ttsQueue=[], ttsIdx=0, ttsPlaying=false, ttsKind=null;
+let stepRecPlaying=false;
 let ttsVoice=null, ttsVoicesHooked=false;
 let ttsBibleVerses=null, ttsBibleRef='';
 let tmCache=[], ttsTestimonyText='', ttsActiveIdx=-1;
@@ -1456,6 +1458,7 @@ function ttsTextFor(kind){
   return s.replace(/\s+/g,' ').trim();
 }
 function ttsStop(){
+  pauseStepAudio();
   try{ if(nativeTts()) window.Capacitor.Plugins.TextToSpeech.stop(); }catch(e){}
   try{ if('speechSynthesis' in window) speechSynthesis.cancel(); }catch(e){}
   ttsQueue=[]; ttsIdx=0; ttsPlaying=false; ttsKind=null; ttsRenderBtns();
@@ -1499,7 +1502,41 @@ function ttsChunk(text){
   });
   return fin.length?fin:[text];
 }
-function ttsToggle(kind){
+function stepAudioUrl(){
+  if(stepIdx===0){
+    const hr=new Date().getHours();
+    const setName=hr<11?'am':(hr<17?'mid':'pm');
+    const setArr=setName==='am'?STILLNESS_SETS.am:(setName==='mid'?STILLNESS_SETS.mid:STILLNESS_SETS.pm);
+    return 'prayer-stillness-'+setName+'-'+(prayerDayIdx()%setArr.length)+'.mp3';
+  }
+  return 'prayer-j'+journeyIdx()+'-step'+stepIdx+'.mp3';
+}
+function pauseStepAudio(){
+  const au=$('stepAudio');
+  if(au&&!au.paused){ try{ au.pause(); }catch(e){} }
+  stepRecPlaying=false;
+}
+async function tryPlayStepRec(){
+  const au=$('stepAudio'); if(!au) return false;
+  const url=stepAudioUrl();
+  try{ const r=await fetch(url,{method:'HEAD'}); if(!r.ok) return false; }catch(e){ return false; }
+  ttsStop();
+  au.src=url;
+  au.onended=function(){ stepRecPlaying=false; ttsPlaying=false; ttsKind=null; ttsRenderBtns(); };
+  try{ await au.play(); }catch(e){ return false; }
+  stepRecPlaying=true; ttsPlaying=true; ttsKind='step'; ttsRenderBtns();
+  return true;
+}
+function stopStepRec(){
+  pauseStepAudio();
+  ttsPlaying=false; ttsKind=null; ttsRenderBtns();
+}
+async function ttsToggle(kind){
+  if(kind==='step'){
+    if(stepRecPlaying){ stopStepRec(); return; }
+    if(ttsPlaying&&ttsKind==='step'){ ttsStop(); return; }
+    if(await tryPlayStepRec()) return;
+  }
   if(!ttsSupported()){ toast('Voice is not available on this device'); return; }
   if(ttsPlaying&&ttsKind===kind){ ttsStop(); return; }
   const text=ttsSpeakable(ttsTextFor(kind));
