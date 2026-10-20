@@ -600,7 +600,7 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
     Listen</button>
 </nav>
 
-<div id="buildTag" style="text-align:center;font-size:.68rem;opacity:.45;padding:24px 0 92px">Gethsemane · build 2026-10-20b</div>
+<div id="buildTag" style="text-align:center;font-size:.68rem;opacity:.45;padding:24px 0 92px">Gethsemane · build 2026-10-20c</div>
 
 <div id="toast" role="status"></div>
 
@@ -1413,6 +1413,14 @@ function ttsRenderBtns(){
     b.textContent=active?'⏹ Stop':(b.dataset.label||'🔊 Listen');
   });
 }
+function ttsSpeakable(s){
+  if(!s) return s;
+  s=s.replace(/(\d+):(\d+)(?:\s*[-\u2013]\s*(\d+))?/g,function(m,a,b,c){ return a+' verse '+b+(c?(' to '+c):''); });
+  s=s.replace(/\b1 (Samuel|Kings|Chronicles|Corinthians|Thessalonians|Timothy|Peter|John)\b/g,'First $1');
+  s=s.replace(/\b2 (Samuel|Kings|Chronicles|Corinthians|Thessalonians|Timothy|Peter|John)\b/g,'Second $1');
+  s=s.replace(/\b3 John\b/g,'Third John');
+  return s;
+}
 function ttsTextFor(kind){
   function txt(id){ const el=$(id); return el?el.textContent:''; }
   let s='';
@@ -1447,7 +1455,7 @@ function ttsNext(){
   if(nativeTts()){ ttsNextNative(); return; }
   const u=new SpeechSynthesisUtterance(ttsQueue[ttsIdx++]);
   if(!ttsVoice) ttsVoice=pickTtsVoice();
-  if(ttsVoice) u.voice=ttsVoice;
+  if(ttsVoice){ u.voice=ttsVoice; if(ttsVoice.lang) u.lang=ttsVoice.lang; }
   u.rate=0.95; u.pitch=0.95;
   u.onend=function(){ if(ttsPlaying) ttsNext(); };
   u.onerror=function(){ ttsPlaying=false; ttsKind=null; ttsRenderBtns(); };
@@ -1476,8 +1484,10 @@ function ttsChunk(text){
 function ttsToggle(kind){
   if(!ttsSupported()){ toast('Voice is not available on this device'); return; }
   if(ttsPlaying&&ttsKind===kind){ ttsStop(); return; }
-  const text=ttsTextFor(kind);
+  const text=ttsSpeakable(ttsTextFor(kind));
   if(!text||/loading chapter/i.test(text)){ toast('Wait for the text to load, then tap Listen'); return; }
+  ttsVoice=pickTtsVoice();
+  if(ttsVoice) toast('\u{1F50A} Voice: '+ttsVoice.name);
   try{ speechSynthesis.cancel(); }catch(e){}
   try{ if(nativeTts()) window.Capacitor.Plugins.TextToSpeech.stop(); }catch(e){}
   ttsQueue=ttsChunk(text);
