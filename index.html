@@ -302,6 +302,11 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
   </div>
   <button class="btn btn-gold" id="devPrayBtn" style="width:100%;padding:14px">Pray with today's devotion →</button>
   <button class="btn" id="devShareBtn" style="width:100%;padding:12px;margin-top:8px">📤 Share today’s verse</button>
+  <div id="devAudioBox" style="display:none;margin-top:10px" class="card">
+    <div style="font-weight:700;margin-bottom:6px">🎙️ Today's devotion — recorded reading</div>
+    <audio id="devAudio" controls preload="none" style="width:100%"></audio>
+    <div class="pt-note" style="margin-top:6px">Plays even with the app in the background — use the lock-screen controls.</div>
+  </div>
   <button class="btn tts-btn" data-tts="devotion" data-label="🔊 Listen to today's devotion" style="width:100%;padding:12px;margin-top:8px">🔊 Listen to today's devotion</button>
 </section>
 
@@ -600,7 +605,7 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
     Listen</button>
 </nav>
 
-<div id="buildTag" style="text-align:center;font-size:.68rem;opacity:.45;padding:24px 0 92px">Gethsemane · build 2026-10-20c</div>
+<div id="buildTag" style="text-align:center;font-size:.68rem;opacity:.45;padding:24px 0 92px">Gethsemane · build 2026-10-20d</div>
 
 <div id="toast" role="status"></div>
 
@@ -1080,6 +1085,7 @@ const VIEWS=['home','devotion','guided','bible','wall','testimony','love','liste
 function showView(name){
   if(typeof ttsStop==='function') ttsStop();
   if(name!=='listen'&&typeof stopListen==='function') stopListen();
+  if(name!=='devotion'){ const da=$('devAudio'); if(da&&!da.paused){ try{ da.pause(); }catch(e){} } }
   VIEWS.forEach(v=>$('view-'+v).classList.toggle('active', v===name));
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.view===name));
   window.scrollTo(0,0);
@@ -1124,6 +1130,18 @@ async function loadDevotion(){
   $('devReflection').textContent=devotion.reflection;
   $('devFocus').textContent=devotion.prayer_focus;
   applyReaderSize();
+  loadDevotionAudio();
+}
+async function loadDevotionAudio(){
+  const box=$('devAudioBox'), au=$('devAudio');
+  if(!box||!au) return;
+  const url='devotion-'+todayStr()+'.mp3';
+  try{
+    const r=await fetch(url,{method:'HEAD'});
+    if(r.ok){ au.src=url; box.style.display=''; return; }
+  }catch(e){}
+  box.style.display='none';
+  try{ au.removeAttribute('src'); }catch(e){}
 }
 $('devotionCard').addEventListener('click',()=>showView('devotion'));
 $('devPrayBtn').addEventListener('click',()=>{ startGuided(); showView('guided'); });
