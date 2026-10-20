@@ -600,7 +600,7 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
     Listen</button>
 </nav>
 
-<div id="buildTag" style="text-align:center;font-size:.68rem;opacity:.45;padding:24px 0 92px">Gethsemane · build 2026-10-20a</div>
+<div id="buildTag" style="text-align:center;font-size:.68rem;opacity:.45;padding:24px 0 92px">Gethsemane · build 2026-10-20b</div>
 
 <div id="toast" role="status"></div>
 
@@ -1483,6 +1483,17 @@ function ttsToggle(kind){
   ttsQueue=ttsChunk(text);
   ttsIdx=0; ttsPlaying=true; ttsKind=kind; ttsRenderBtns(); ttsNext();
 }
+/* Resume listening after iOS suspends speech while the app is in the background */
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden) return;
+  if(!ttsPlaying||nativeTts()) return;
+  let speaking=false;
+  try{ speaking=speechSynthesis.speaking||speechSynthesis.pending; }catch(e){}
+  if(!speaking&&ttsQueue.length){
+    if(ttsIdx>0&&ttsIdx<=ttsQueue.length) ttsIdx--;
+    ttsNext();
+  }
+});
 function bindTts(){
   hookTtsVoices();
   document.querySelectorAll('.tts-btn').forEach(function(b){
