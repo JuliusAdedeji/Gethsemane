@@ -370,6 +370,11 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
   <div class="card">
     <div class="dev-ref" id="bibleRef"></div>
     <div style="margin:6px 0"><button class="btn btn-sm tts-btn" data-tts="bible" data-label="🔊 Listen">🔊 Listen</button></div>
+    <div id="bibleAudioBox" style="display:none;margin:8px 0">
+      <div style="font-weight:700;margin-bottom:6px">🎙️ Recorded reading — in the app voice</div>
+      <audio id="bibleAudio" controls preload="none" style="width:100%"></audio>
+      <div class="pt-note" style="margin-top:6px">Recordings are being added book by book — Psalms first.</div>
+    </div>
     <div class="scripture reader-text" id="bibleText"></div>
   </div>
   <div class="card" style="margin-top:12px">
@@ -606,7 +611,7 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
     Listen</button>
 </nav>
 
-<div id="buildTag" style="text-align:center;font-size:.68rem;opacity:.45;padding:24px 0 92px">Gethsemane · build 2026-10-20e</div>
+<div id="buildTag" style="text-align:center;font-size:.68rem;opacity:.45;padding:24px 0 92px">Gethsemane · build 2026-10-20f</div>
 
 <div id="toast" role="status"></div>
 
@@ -1087,6 +1092,7 @@ function showView(name){
   if(typeof ttsStop==='function') ttsStop();
   if(name!=='listen'&&typeof stopListen==='function') stopListen();
   if(name!=='devotion'){ const da=$('devAudio'); if(da&&!da.paused){ try{ da.pause(); }catch(e){} } }
+  if(name!=='bible'){ const ba=$('bibleAudio'); if(ba&&!ba.paused){ try{ ba.pause(); }catch(e){} } }
   VIEWS.forEach(v=>$('view-'+v).classList.toggle('active', v===name));
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.view===name));
   window.scrollTo(0,0);
@@ -1132,6 +1138,20 @@ async function loadDevotion(){
   $('devFocus').textContent=devotion.prayer_focus;
   applyReaderSize();
   loadDevotionAudio();
+}
+async function loadBibleAudio(book,ch){
+  const box=$('bibleAudioBox'), au=$('bibleAudio');
+  if(!box||!au) return;
+  const key=book+'-'+ch;
+  box.dataset.key=key;
+  if(curVersion!=='kjv'){ box.style.display='none'; try{ au.pause(); }catch(e){} return; }
+  const url='bible-'+book+'-'+ch+'.mp3';
+  try{
+    const r=await fetch(url,{method:'HEAD'});
+    if(box.dataset.key!==key) return;
+    if(r.ok){ if(au.getAttribute('src')!==url) au.src=url; box.style.display=''; return; }
+  }catch(e){}
+  if(box.dataset.key===key){ box.style.display='none'; try{ au.removeAttribute('src'); }catch(e){} }
 }
 async function loadDevotionAudio(){
   const box=$('devAudioBox'), au=$('devAudio');
@@ -1310,6 +1330,7 @@ function renderChapterVerses(book,ch,verses){
   }
   html+=bpFoot;
   ttsBibleVerses=verses; ttsBibleRef=bk.name+' '+ch+' · '+VERSIONS[curVersion];
+  loadBibleAudio(book,ch);
   $('bibleText').innerHTML=html;
   $('bibleText').querySelectorAll('[data-gob]').forEach(function(b){
     b.addEventListener('click',function(){ goChapter(parseInt(b.dataset.gob,10),parseInt(b.dataset.goc,10)); });
