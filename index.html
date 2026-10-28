@@ -1163,6 +1163,13 @@ async function loadDevotionAudio(){
     const r=await fetch(url,{method:'HEAD'});
     if(r.ok){ au.src=url; box.style.display=''; return; }
   }catch(e){}
+  try{
+    const now=new Date(), start=new Date(now.getFullYear(),0,0);
+    const dayOfYear=Math.floor((now-start)/864e5);
+    const rotUrl='devotion-rot-'+String(((dayOfYear-1)%30)+1).padStart(2,'0')+'.mp3';
+    const rr=await fetch(rotUrl,{method:'HEAD'});
+    if(rr.ok){ au.src=rotUrl; box.style.display=''; return; }
+  }catch(e){}
   box.style.display='none';
   try{ au.removeAttribute('src'); }catch(e){}
 }
