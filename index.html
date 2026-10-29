@@ -306,10 +306,10 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
   <button class="btn" id="devShareBtn" style="width:100%;padding:12px;margin-top:8px">📤 Share today’s verse</button>
   <div id="devAudioBox" style="display:none;margin-top:10px" class="card">
     <div style="font-weight:700;margin-bottom:6px">🎙️ Today's devotion — recorded reading</div>
-    <audio id="devAudio" controls preload="none" style="width:100%"></audio>
+    <audio id="devAudio" controls preload="metadata" style="width:100%"></audio>
     <div class="pt-note" style="margin-top:6px">Plays even with the app in the background — use the lock-screen controls.</div>
   </div>
-  <button class="btn tts-btn" data-tts="devotion" data-label="🔊 Listen to today's devotion" style="width:100%;padding:12px;margin-top:8px">🔊 Listen to today's devotion</button>
+  <button class="btn tts-btn" id="devListenBtn" data-tts="devotion" data-label="🔊 Listen to today's devotion" style="width:100%;padding:12px;margin-top:8px">🔊 Listen to today's devotion</button>
 </section>
 
 <!-- ============ GUIDED PRAYER ============ -->
@@ -613,7 +613,7 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
     Listen</button>
 </nav>
 
-<div id="buildTag" style="text-align:center;font-size:.68rem;opacity:.45;padding:24px 0 92px">Gethsemane · build 2026-10-20f</div>
+<div id="buildTag" style="text-align:center;font-size:.68rem;opacity:.45;padding:24px 0 92px">Gethsemane · build 2026-10-29a</div>
 
 <div id="toast" role="status"></div>
 
@@ -1156,21 +1156,22 @@ async function loadBibleAudio(book,ch){
   if(box.dataset.key===key){ box.style.display='none'; try{ au.removeAttribute('src'); }catch(e){} }
 }
 async function loadDevotionAudio(){
-  const box=$('devAudioBox'), au=$('devAudio');
+  const box=$('devAudioBox'), au=$('devAudio'), listenBtn=$('devListenBtn');
   if(!box||!au) return;
   const url='devotion-'+todayStr()+'.mp3';
   try{
     const r=await fetch(url,{method:'HEAD'});
-    if(r.ok){ au.src=url; box.style.display=''; return; }
+    if(r.ok){ au.src=url; box.style.display=''; if(listenBtn) listenBtn.style.display='none'; return; }
   }catch(e){}
   try{
     const now=new Date(), start=new Date(now.getFullYear(),0,0);
     const dayOfYear=Math.floor((now-start)/864e5);
     const rotUrl='devotion-rot-'+String(((dayOfYear-1)%30)+1).padStart(2,'0')+'.mp3';
     const rr=await fetch(rotUrl,{method:'HEAD'});
-    if(rr.ok){ au.src=rotUrl; box.style.display=''; return; }
+    if(rr.ok){ au.src=rotUrl; box.style.display=''; if(listenBtn) listenBtn.style.display='none'; return; }
   }catch(e){}
   box.style.display='none';
+  if(listenBtn) listenBtn.style.display='';
   try{ au.removeAttribute('src'); }catch(e){}
 }
 $('devotionCard').addEventListener('click',()=>showView('devotion'));
