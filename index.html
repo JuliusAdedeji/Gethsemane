@@ -212,6 +212,26 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
 .bp-bar{height:8px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin:10px 0}
 .bp-bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-soft));border-radius:99px;transition:width .4s}
 .bp-chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+/* ---------- my books ---------- */
+.book-card{text-align:center}
+.book-cover{width:min(240px,62vw);border-radius:10px;border:1px solid var(--line);
+  box-shadow:0 10px 30px rgba(0,0,0,.45);margin:6px auto 12px;display:block}
+.book-title{font-family:var(--serif);font-size:1.45rem;color:var(--gold-soft);line-height:1.3;margin:4px 0}
+.book-sub{font-family:var(--serif);font-style:italic;color:var(--muted);font-size:.95rem;margin-bottom:10px}
+.book-desc{color:var(--ink);font-size:.95rem;line-height:1.65;text-align:left}
+.book-desc .scripture{font-size:1rem}
+.book-formats{display:grid;gap:10px;margin:14px 0;text-align:left}
+.book-format{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--bg2)}
+.book-format .fmt-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.book-format .fmt-name{font-family:var(--serif);color:var(--gold-soft);font-size:1.05rem}
+.book-format .fmt-price{font-weight:700;color:var(--ink);white-space:nowrap}
+.book-format .fmt-note{color:var(--muted);font-size:.85rem;margin-top:2px}
+.badge-live{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:#1a1206;background:linear-gradient(135deg,var(--gold),#b98a2e);border-radius:99px;padding:3px 10px}
+.badge-soon{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--gold-soft);border:1px solid var(--gold);border-radius:99px;padding:3px 10px}
+.book-buy{width:100%;font-size:1.1rem;padding:14px 10px;margin-top:4px}
+a.btn-disabled{opacity:.55;pointer-events:none}
 </style>
 </head>
 <body>
@@ -257,6 +277,7 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
       <button class="btn" data-goto="bible">📖 Open Bible</button>
       <button class="btn" data-goto="wall">🕯️ Prayer Wall</button>
       <button class="btn" data-goto="times">🕰️ Prayer times</button>
+      <button class="btn" data-goto="books">📚 My Books</button>
     </div>
   </div>
 
@@ -587,6 +608,50 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
   <div id="listenList"><div class="loading">Loading…</div></div>
 </section>
 
+<!-- ============ MY BOOKS ============ -->
+<section class="view" id="view-books">
+  <button class="btn btn-ghost btn-sm" data-goto="home">← Home</button>
+  <h1>My Books</h1>
+  <p class="sub">From the garden, to your hands — words to pray with, day by day.</p>
+
+  <div class="card book-card">
+    <img class="book-cover" src="book-cover-30-days.jpg" alt="Cover of 30 Days of Prayer and Trust — dawn breaking over a misty lake" width="800" height="1280">
+    <div class="book-title">30 Days of Prayer and Trust</div>
+    <div class="book-sub">A Gethsemane Watch Devotional &middot; by Julius Adedeji</div>
+    <div class="book-desc">
+      <p>Thirty days of prayer and trust, drawn from the daily devotions of the Gethsemane Watch app — one verse to carry, one prayer to pray, for ordinary days: the worried morning, the tired evening, the day when nothing seems to be moving.</p>
+      <p class="scripture">&ldquo;Thy word is a lamp unto my feet, and a light unto my path.&rdquo; <span style="color:var(--muted);font-size:.9rem">&mdash; Psalm 119:105 (KJV)</span></p>
+      <p>By a man of prayer and worship — these devotions were written so that prayer does not need to be complicated to be real.</p>
+    </div>
+    <div class="book-formats">
+      <div class="book-format">
+        <div class="fmt-top"><span class="fmt-name">Kindle eBook</span><span class="badge-live">Live now</span></div>
+        <div class="fmt-top"><span class="fmt-note">Read on any Kindle or in the free Kindle app. Included with Kindle Unlimited.</span><span class="fmt-price">$4.99</span></div>
+      </div>
+      <div class="book-format">
+        <div class="fmt-top"><span class="fmt-name">Paperback</span><span class="badge-soon">Coming soon</span></div>
+        <div class="fmt-top"><span class="fmt-note">Print edition in review with Amazon — check back soon.</span><span class="fmt-price">$9.99</span></div>
+      </div>
+    </div>
+    <a class="btn btn-gold book-buy" id="bookBuyEbook" href="#" target="_blank" rel="noopener">Buy the eBook on Amazon</a>
+    <p class="form-note" id="bookBuyNote" style="display:none">The Amazon link is being added — check back shortly.</p>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">📬 Book news, straight to you</h2>
+    <p class="sub">New books, new editions, and reader-only news from Gethsemane Watch. One email when there is something worth sharing — never more.</p>
+    <label class="flabel" for="bookNewsEmail">Email address</label>
+    <input type="email" id="bookNewsEmail" required placeholder="you@example.com">
+    <label class="flabel" for="bookNewsName">Your name (optional)</label>
+    <input type="text" id="bookNewsName" maxlength="80" placeholder="Your name">
+    <div class="form-err" id="bookNewsErr" role="alert"></div>
+    <div class="adminrow"><button class="btn btn-gold" id="bookNewsBtn">Keep me posted</button></div>
+    <p class="form-note" id="bookNewsMsg"></p>
+  </div>
+
+  <p class="pt-note" style="text-align:center;margin-top:14px">More books are on the way — one every few weeks, God willing.</p>
+</section>
+
 </main>
 
 <nav class="tabbar" aria-label="Main navigation">
@@ -611,6 +676,9 @@ input[type=time],input[type=number]{background:var(--bg2);border:1px solid var(-
   <button class="tab" data-view="listen">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10v4h3l4 4V6l-4 4H4z"/><path d="M15.5 9.5a4 4 0 010 5"/><path d="M18 7a8 8 0 010 10"/></svg>
     Listen</button>
+  <button class="tab" data-view="books">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2z"/><path d="M4 19a2 2 0 012-2h13"/><path d="M9 7h6"/></svg>
+    Books</button>
 </nav>
 
 <div id="buildTag" style="text-align:center;font-size:.68rem;opacity:.45;padding:24px 0 92px">Gethsemane · build 2026-10-29a</div>
@@ -763,6 +831,16 @@ document.getElementById('devShareBtn').addEventListener('click',shareVerseCard);
 const SUPABASE_URL = 'https://lzkalyktoecinlvlvpme.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_x5SDYjqMJy4dAJ_Z_4_SyA_hsDBU3Er';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ================= MY BOOKS =================
+   AMAZON_EBOOK_URL — the ONLY place the Amazon link lives.
+   "30 Days of Prayer and Trust" went live in the Kindle Store on
+   Nov 18, 2026. Paste the Kindle Store URL here (from the KDP
+   bookshelf or the "Your book is available in the Kindle Store"
+   email) and the "Buy the eBook on Amazon" button starts working.
+   While this still says 'TODO' the button shows "link coming soon"
+   and stays disabled. Do NOT guess the URL. */
+const AMAZON_EBOOK_URL = 'https://www.amazon.com/dp/B0HS33979N';
 
 /* ================= BIBLE DATA (public domain) ================= */
 const VERSIONS = {kjv:'KJV', web:'WEB', asv:'ASV', ylt:'YLT', bbe:'BBE'};
@@ -1089,7 +1167,7 @@ function fmtDate(iso){
 }
 
 /* ================= NAVIGATION ================= */
-const VIEWS=['home','devotion','guided','bible','wall','testimony','love','listen','times','auth','admin'];
+const VIEWS=['home','devotion','guided','bible','wall','testimony','love','listen','books','times','auth','admin'];
 function showView(name){
   if(typeof ttsStop==='function') ttsStop();
   if(name!=='listen'&&typeof stopListen==='function') stopListen();
@@ -1102,6 +1180,7 @@ function showView(name){
   if(name==='testimony') loadTestimonies();
   if(name==='love') loadNeeds();
   if(name==='listen') loadListen();
+  if(name==='books') renderBooks();
   if(name==='admin') loadAdmin();
   if(name==='bible') renderHlList();
 }
@@ -1110,6 +1189,7 @@ document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',(
 $('authBtn').addEventListener('click',()=>showView('auth'));
 $('adminBtn').addEventListener('click',()=>showView('admin'));
 $('fbSendBtn').addEventListener('click',sendFeedback);
+$('bookNewsBtn').addEventListener('click',sendBookSignup);
 document.addEventListener('visibilitychange',function(){ if(!document.hidden) updateReviewBadge(); });
 
 /* ================= TEXT SIZE ================= */
@@ -2025,6 +2105,50 @@ async function sendFeedback(){
     $('fbBody').value=''; $('fbName').value='';
     toast('Thank you — your feedback is on its way 🙏');
   }catch(e){ fbErr('Could not send — please check your connection and try again.'); }
+  btn.disabled=false;
+}
+
+/* ================= MY BOOKS ================= */
+function renderBooks(){
+  const buy=$('bookBuyEbook'), note=$('bookBuyNote');
+  if(AMAZON_EBOOK_URL && AMAZON_EBOOK_URL!=='TODO'){
+    buy.href=AMAZON_EBOOK_URL; buy.classList.remove('btn-disabled');
+    buy.textContent='Buy the eBook on Amazon'; note.style.display='none';
+  }else{
+    buy.removeAttribute('href'); buy.classList.add('btn-disabled');
+    buy.textContent='Buy the eBook on Amazon — link coming soon'; note.style.display='';
+  }
+  const em=$('bookNewsEmail');
+  if(em && !em.value && session && session.user && session.user.email) em.value=session.user.email;
+}
+/* Book-news signups save to a Supabase table 'book_signups' (same
+   pattern as the feedback form). Run this once in the Supabase SQL
+   editor before signups can save — until then the form shows
+   "Could not sign up":
+     create table public.book_signups (
+       id bigint generated always as identity primary key,
+       email text not null, name text, user_id uuid,
+       created_at timestamptz not null default now());
+     alter table public.book_signups enable row level security;
+     create policy "Anyone can sign up for book news"
+       on public.book_signups for insert to anon, authenticated with check (true);
+     grant select on public.book_signups to anon;
+     grant select, insert, update, delete on public.book_signups to authenticated, service_role; */
+async function sendBookSignup(){
+  const email=$('bookNewsEmail').value.trim(), name=$('bookNewsName').value.trim();
+  const errEl=$('bookNewsErr'), msgEl=$('bookNewsMsg');
+  errEl.style.display='none'; errEl.textContent=''; msgEl.textContent='';
+  if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    errEl.textContent='Please enter a valid email address.'; errEl.style.display='block'; return;
+  }
+  const btn=$('bookNewsBtn'); btn.disabled=true;
+  try{
+    const row={email:email, name:name||null, user_id:(session&&session.user)?session.user.id:null};
+    const {error}=await sb.from('book_signups').insert(row);
+    if(error) throw error;
+    $('bookNewsEmail').value=''; $('bookNewsName').value='';
+    msgEl.textContent='Thank you — you are on the list. Watch your inbox for book news. 🙏';
+  }catch(e){ errEl.textContent='Could not sign up — please check your connection and try again.'; errEl.style.display='block'; }
   btn.disabled=false;
 }
 
