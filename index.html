@@ -629,12 +629,29 @@ a.btn-disabled{opacity:.55;pointer-events:none}
         <div class="fmt-top"><span class="fmt-note">Read on any Kindle or in the free Kindle app. Included with Kindle Unlimited.</span><span class="fmt-price">$4.99</span></div>
       </div>
       <div class="book-format">
-        <div class="fmt-top"><span class="fmt-name">Paperback</span><span class="badge-soon">Coming soon</span></div>
-        <div class="fmt-top"><span class="fmt-note">Print edition in review with Amazon — check back soon.</span><span class="fmt-price">$9.99</span></div>
+        <div class="fmt-top"><span class="fmt-name">Paperback</span><span class="badge-live">Live now</span></div>
+        <div class="fmt-top"><span class="fmt-note">The same thirty days in print — to hold, to gift, to keep by the bed.</span><span class="fmt-price">$9.99</span></div>
       </div>
     </div>
-    <a class="btn btn-gold book-buy" id="bookBuyEbook" href="#" target="_blank" rel="noopener">Buy the eBook on Amazon</a>
+    <a class="btn btn-gold book-buy" id="bookBuyEbook" href="#" target="_blank" rel="noopener">Buy on Amazon</a>
     <p class="form-note" id="bookBuyNote" style="display:none">The Amazon link is being added — check back shortly.</p>
+  </div>
+
+  <div class="card book-card">
+    <img class="book-cover" src="book-cover-coloring-vol1.jpg" alt="Cover of Bible Stories Coloring Book for Kids Ages 4-6 — Noah's Ark, the animals, and the great fish" width="800" height="1035">
+    <div class="book-title">Bible Stories Coloring Book for Kids Ages 4-6</div>
+    <div class="book-sub">Volume 1: Old Testament Stories &middot; by Julius Adedeji</div>
+    <div class="book-desc">
+      <p>Fifty bold and easy designs from ten beloved Old Testament stories — Creation, Noah's Ark, Joseph, Moses, David, Daniel, Jonah, Esther, and Abraham — with a short Bible verse on every page to read together.</p>
+      <p>Big, simple pictures made for little hands, ages 4 to 6. Every design is printed on one side only, so colors never spoil the next picture. For home, Sunday school, children's church, and gifts.</p>
+    </div>
+    <div class="book-formats">
+      <div class="book-format">
+        <div class="fmt-top"><span class="fmt-name">Paperback</span><span class="badge-live">Live now</span></div>
+        <div class="fmt-top"><span class="fmt-note">50 designs &middot; a Bible verse on every page &middot; single-sided pages.</span><span class="fmt-price">$9.99</span></div>
+      </div>
+    </div>
+    <a class="btn btn-gold book-buy" href="https://www.amazon.com/Bible-Stories-Coloring-Book-Kids/dp/B0HSWB4MST" target="_blank" rel="noopener">Buy on Amazon</a>
   </div>
 
   <div class="card">
@@ -2113,10 +2130,10 @@ function renderBooks(){
   const buy=$('bookBuyEbook'), note=$('bookBuyNote');
   if(AMAZON_EBOOK_URL && AMAZON_EBOOK_URL!=='TODO'){
     buy.href=AMAZON_EBOOK_URL; buy.classList.remove('btn-disabled');
-    buy.textContent='Buy the eBook on Amazon'; note.style.display='none';
+    buy.textContent='Buy on Amazon'; note.style.display='none';
   }else{
     buy.removeAttribute('href'); buy.classList.add('btn-disabled');
-    buy.textContent='Buy the eBook on Amazon — link coming soon'; note.style.display='';
+    buy.textContent='Buy on Amazon — link coming soon'; note.style.display='';
   }
   const em=$('bookNewsEmail');
   if(em && !em.value && session && session.user && session.user.email) em.value=session.user.email;
